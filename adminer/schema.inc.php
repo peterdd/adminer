@@ -100,21 +100,27 @@ $schemaheight=$top + $maxheight;
 $sort_default=false;
 $sort_fieldcount=false;
 $sort_fieldcount_desc=false;
+$sort_cookie=false;
+$sort_name=false;
 
 if (isset($_POST['sort'])){
-	if ($_POST['sort']=='fieldcount'){
+	if ($_POST['sort']=='name'){
+		$sort_name=true;
+	} elseif ($_POST['sort']=='fieldcount'){
 		$sort_fieldcount=true;
 	} elseif ($_POST['sort']=='fieldcount_desc'){
 		$sort_fieldcount_desc=true;
+	} elseif ($_POST['sort']=='cookie'){
+		$sort_cookie=true;
 	} else{
-		$sort_default=true;
+		$sort_cookie=true;
 	}
 } else {
-	$sort_default=true;
+	$sort_cookie=true;
 }
 ?>
 <form action="" method="post" class="sortform">
-<button <?= $sort_default ? 'class="highlight" ':'' ?>name="sort" value="" onclick="this.form.submit();">Name</button>
+<button <?= $sort_default ? 'class="highlight" ':'' ?>name="sort" value="name" onclick="this.form.submit();">Name</button>
 </form>
 <form action="" method="post" class="sortform">
 <button <?= $sort_fieldcount ? 'class="highlight" ':'' ?>name="sort" value="fieldcount" onclick="this.form.submit();">Fields</button>
@@ -122,13 +128,16 @@ if (isset($_POST['sort'])){
 <form action="" method="post" class="sortform">
 <button <?= $sort_fieldcount_desc ? 'class="highlight" ':'' ?>name="sort" value="fieldcount_desc" onclick="this.form.submit();">Fields desc</button>
 </form>
+<form action="" method="post" class="sortform">
+<button <?= $sort_cookie ? 'class="highlight" ':'' ?>name="sort" value="cookie" onclick="this.form.submit();">Coords Cookie</button>
+</form>
 <input type="checkbox" id="s_showfields">
 <label id="showfieldslabel" for="s_showfields">Hide fields</label>
 <div id="minimap">
 	<div id="whereami"></div>
-	<div id="visible"></div>
+	<div id="visible"><div id="dragme"></div></div>
 </div>
-<div id="miniinfo">default</div>
+<div id="miniinfo"></div>
 <style>
 .highlight {background-color:#999;}
 #content{width:max-content;}
@@ -186,6 +195,11 @@ if (isset($_POST['sort'])){
 	box-sizing:content-box;
 	position:absolute;
 }
+#visible #dragme {
+	width:100%;
+	height:100%;
+	cursor:move;
+}
 #miniinfo{
 	position:fixed;
 	bottom:20px;
@@ -197,28 +211,48 @@ if (isset($_POST['sort'])){
 	background-color:#fff;
 }
 </style>
-<div id="schema">
 <script>
+var tablePos = {<?php echo implode(",", $table_pos_js) . "\n"; ?>};
+var em=14.4; // I use px, but do not want change existing adminer scripts..
 document.addEventListener('DOMContentLoaded', function () {
-	document.getElementById('schema').addEventListener('mousemove', updateMinimap);
+	/* document.getElementById('schema').addEventListener('mousemove', updateMinimap); */
 	document.getElementById('visible').addEventListener('click', dragMinimap);
 	window.addEventListener('resize', updateMinimap);
 	window.addEventListener('scroll', updateMinimap);
+
+	qs('#schema').onselectstart = function () { return false; };
+	document.onmousemove = schemaMousemove;
+	document.onmouseup = partialArg(schemaMouseup, '<?php echo js_escape(DB); ?>');
+
 	updateMinimap(this);
 });
 function dragMinimap(event){
 	console.log(event.clientX);
-	/*get click coords */
+	console.log(event.clientY);
+	schema=document.getElementById('schema').getBoundingClientRect();
 	minimap=document.getElementById('minimap').getBoundingClientRect();
+	visible=document.getElementById('visible').getBoundingClientRect();
+	/*
+	console.log('schema:');
+	console.log(schema);
+	console.log('minimap:');
 	console.log(minimap);
-	window.scroll(100,100);
+	*/
+	sx=(event.clientX-minimap.left)/minimap.width;
+	sy=(event.clientY-minimap.top)/minimap.height;
+	/*
+	console.log('sx:'+sx +' sy:'+sy);
+	*/
+	window.scrollTo(sx*schema.width,sy*schema.height);
 }
 function updateMinimap(event) {
 	schema=document.getElementById('schema').getBoundingClientRect();
 	minimap=document.getElementById('minimap').getBoundingClientRect();
+	/*
 	document.getElementById('miniinfo').innerHTML= 'schema:' + schema.width + ' x ' + schema.height
 		+ '<br>mouse:' + event.clientX + ' x ' + event.clientY
 		+ '<br>window:' + window.innerWidth + ' x ' + window.innerHeight;
+	*/
 	if(event.clientX-schema.left >0 ){
 		document.getElementById('whereami').style['left'] = minimap.width * (event.clientX-schema.left) / schema.width + 'px';
 	}else{
@@ -278,19 +312,8 @@ function updateMinimap(event) {
 	}
 }
 </script>
+<div id="schema">
 <?php
-foreach ($schema as $name => $table) {
-	echo "<div class='table' style='left:".$table["pos"][0]."px;top:".$table["pos"][1]."px'>";
-	echo '<a href="' . h(ME) . 'table=' . urlencode($name) . '"><b>' . h($name) . "</b></a>";
-	echo script("qsl('div').onmousedown = schemaMousedown;");
-
-	foreach ($table["fields"] as $field) {
-		$val = '<span' . type_class($field["type"]) . ' title="' . h($field["full_type"] . ($field["null"] ? " NULL" : '')) . '">' . h($field["field"]) . '</span>';
-		echo ($field["primary"] ? "<i>$val</i>" : $val);
-	}
-	echo "</div>";
-}
-
 foreach ($schema as $name => $table) {
 	$i=0;
 	foreach ((array) $table["references"] as $target_name => $refs) {
@@ -343,6 +366,19 @@ foreach ($schema as $name => $table) {
 		}
 	}
 }
+
+foreach ($schema as $name => $table) {
+	echo "<div class='table' style='left:".$table["pos"][0]."px;top:".$table["pos"][1]."px'>";
+	echo '<a href="' . h(ME) . 'table=' . urlencode($name) . '"><b>' . h($name) . "</b></a>";
+	echo script("qsl('div.table').onmousedown = schemaMousedown;");
+
+	foreach ($table["fields"] as $field) {
+		$val = '<span' . type_class($field["type"]) . ' title="' . h($field["full_type"] . ($field["null"] ? " NULL" : '')) . '">' . h($field["field"]) . '</span>';
+		echo ($field["primary"] ? "<i>$val</i>" : $val);
+	}
+	echo "</div>";
+}
+
 ?>
 </div>
 <p class="links"><a href="<?php echo h(ME . "schema=" . urlencode($SCHEMA)); ?>" id="schema-link"><?php echo lang('Permanent link'); ?></a></p>

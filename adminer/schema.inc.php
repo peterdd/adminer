@@ -5,6 +5,9 @@ page_header(lang('Database schema'), "", array(), h(DB . ($_GET["ns"] ? ".$_GET[
 $font='/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf';
 $fontbold='/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf';
 
+$hasfont=file_exists($font);
+$hasfontbold=file_exists($fontbold);
+
 $table_pos = array();
 $table_pos_js = array();
 $SCHEMA = ($_GET["schema"] ? $_GET["schema"] : $_COOKIE["adminer_schema-" . str_replace(".", "_", DB)]); // $_COOKIE["adminer_schema"] was used before 3.2.0 //! ':' in table name
@@ -49,7 +52,7 @@ foreach ($tables  as $table => $table_status) {
 	}
 
 	$tablewidth=0;
-	if(function_exists('imagettfbbox')){
+	if ($hasfontbold && function_exists('imagettfbbox')){
 		$b = imagettfbbox(8, 0, $fontbold, $table);
 		$tablewidth = max([$b[0],$b[2],$b[4],$b[6]]) - min([$b[0],$b[2],$$b[4],$b[6]]);
 	} else {
@@ -62,7 +65,7 @@ foreach ($tables  as $table => $table_status) {
 		$pos += 11;
 		$field["pos"] = $pos;
 		$schema[$table]["fields"][$name] = $field;
-		if(function_exists('imagettfbbox')){
+		if ($hasfont && function_exists('imagettfbbox')){
 			$b = imagettfbbox(8, 0, $font, $field['field']);
 			$fieldwidth = max([$b[0],$b[2],$b[4],$b[6]]) - min([$b[0],$b[2],$$b[4],$b[6]]);
 		} else {
@@ -153,7 +156,7 @@ form#sortform button:disabled {
 #schema svg line {stroke:rgb(0,102,0);stroke-width:1;opacity:0.5; }
 .table {
 	background-color:#ddd;
-	font-family:<?= function_exists('imagettfbbox') ? 'sans-serif':'monospace'; ?>
+	font-family:<?= ($hasfont && function_exists('imagettfbbox')) ? 'sans-serif':'monospace'; ?>
 }
 .table span{display:block;line-height:11px;}
 .table i span {font-style:normal;background-color:#ff6;}

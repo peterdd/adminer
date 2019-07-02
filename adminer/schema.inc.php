@@ -111,7 +111,7 @@ if (isset($_POST['sort'])){
 	}
 }
 ?>
-<form action="" method="post" class="sortform">
+<form action="" method="post" id="sortform">
 <button <?= $sort=='name' ? 'disabled="disabled" ':'' ?>name="sort" value="name">Name</button>
 <button <?= $sort=='fieldcount' ? 'disabled="disabled" ':'' ?>name="sort" value="fieldcount">Fields</button>
 <button <?= $sort=='fieldcount_desc' ? 'disabled="disabled" ':'' ?>name="sort" value="fieldcount_desc">Fields desc</button>
@@ -129,11 +129,19 @@ if (isset($_POST['sort'])){
 </div>
 <div id="miniinfo"></div>
 <style>
-form.sortform button {cursor:pointer;}
-form.sortform button:disabled {background-color:#696;color:#fff;border:inset;}
-#showfieldslabel{cursor:pointer;}
+form#sortform button {cursor:pointer;padding:0 6px;}
+form#sortform button:disabled {
+	color:#fff;
+	border-width:1px;
+	border-radius:4px;
+	background-color:#696;
+	border-bottom-color:#9b9;
+	border-right-color:#9b9;
+	border-top-color:#363;
+	border-left-color:#363;
+}
 #content{width:max-content;}
-.sortform{display:inline-block;}
+#sortform{display:inline-block;}
 #schema{
 	background:#fff;
 	margin-left:0;
@@ -148,16 +156,28 @@ form.sortform button:disabled {background-color:#696;color:#fff;border:inset;}
 	font-family:<?= function_exists('imagettfbbox') ? 'sans-serif':'monospace'; ?>
 }
 .table span{display:block;line-height:11px;}
-.table i span {font-style:normal;background-color:#cf6;}
+.table i span {font-style:normal;background-color:#ff6;}
 input[name=showfields]{display:none;}
 #s_shownofields:checked ~ #schema .table span{display:none; }
 #s_showpkfields:checked ~ #schema .table span {display:none; }
 #s_showpkfields:checked ~ #schema .table i span {display:block; }
-#showallfieldslabel, #showpkfieldslabel, #shownofieldslabel {display:inline-block;margin:2px;background:#eee; border:1px solid #ccc; padding:3px;border-radius:4px;}
+#showallfieldslabel, #showpkfieldslabel, #shownofieldslabel {
+	cursor:pointer;
+	display:inline-block;
+	background:#eee;
+	border:1px solid #ccc;
+	padding:0 6px;
+	border-radius:4px;
+}
 #s_shownofields:checked  ~ #shownofieldslabel,
 #s_showpkfields:checked  ~ #showpkfieldslabel,
 #s_showallfields:checked ~ #showallfieldslabel {
-	background-color:#696;color:#fff;
+	background-color:#696;
+	color:#fff;
+	border-bottom-color:#9b9;
+	border-right-color:#9b9;
+	border-top-color:#363;
+	border-left-color:#363;
 }
 #minimap{
 <?php

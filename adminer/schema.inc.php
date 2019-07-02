@@ -51,7 +51,7 @@ foreach ($tables  as $table => $table_status) {
 		continue;
 	}
 
-	$tablewidth=0;
+	$tablewidth=40;
 	if ($hasfontbold && function_exists('imagettfbbox')){
 		$b = imagettfbbox(8, 0, $fontbold, $table);
 		$tablewidth = max([$b[0],$b[2],$b[4],$b[6]]) - min([$b[0],$b[2],$$b[4],$b[6]]);
@@ -81,9 +81,10 @@ foreach ($tables  as $table => $table_status) {
 	}
 	$maxheight = max($maxheight, $pos);
 
-	# TODO first x, then y
 	$schema[$table]['pos'] = array( $minleft, $top );
+	$schema[$table]['w'] = $tablewidth;
 	$minleft=$minleft+$tablewidth+20;
+	#print_r($schema[$table]);
 	#echo '('.$schema[$table]["pos"][0].' '.$schema[$table]["pos"][1].') ';
 
 	foreach ($adminer->foreignKeys($table) as $val) {
@@ -231,7 +232,7 @@ input[name=showfields]{display:none;}
 	background-color:#fff;
 }
 </style>
-<script>
+<script<?php echo nonce(); ?>>
 var tablePos = {<?php echo implode(",", $table_pos_js) . "\n"; ?>};
 var em=14.4; // I use px, but do not want change existing adminer scripts..
 document.addEventListener('DOMContentLoaded', function () {
@@ -334,6 +335,8 @@ function updateMinimap(event) {
 </script>
 <div id="schema">
 <?php
+#echo '<pre>';
+#print_r($schema);
 foreach ($schema as $name => $table) {
 	$i=0;
 	foreach ((array) $table["references"] as $target_name => $refs) {
@@ -343,44 +346,64 @@ foreach ($schema as $name => $table) {
 			$j++;
 			foreach ($ref[0] as $key => $source) {
 				$x1 = $table["pos"][0];
-				$x2 = $schema[$target_name]["pos"][0];
+				$w1 = $table['w'];
+				$x2 = $schema[$target_name]['pos'][0];
+				$w2 = $schema[$target_name]['w'];
 				$min_x = min($x1, $x2);
-				$max_x = max($x1, $x2);
-				$w=abs($x1-$x2);
+				$max_x = max($x1+$w1, $x2+$w2);
+				$dx=abs($x1-$x2); # when tables quite vertical aligned
 
-				$y1 = $table["pos"][1] + $table["fields"][$source]["pos"];
-				$y2 = $schema[$target_name]["pos"][1] + $schema[$target_name]["fields"][$ref[1][$key]]["pos"];
+				$y1 = $table['pos'][1] + $table['fields'][$source]['pos'];
+				$y2 = $schema[$target_name]['pos'][1] + $schema[$target_name]['fields'][$ref[1][$key]]['pos'];
 				$min_y = min($y1, $y2);
 				$max_y = max($y1, $y2);
 				$h=abs($y1-$y2);
-				if($x1>$x2){
-					$sx1=$w;
-					$sx2=0;
-				}elseif($x1==$x2){
-					$w=2;
+				if ($dx < 2){
+					$dx=20;
+					$min_x=$min_x-10;
 					$sx1=0;
 					$sx2=0;
-				}else{
-					$sx1=0;
-					$sx2=$w;
+				} elseif ($x1>$x2){
+					if ($x1 > $x2+$w2 ){
+						$dx=$x1-$x2-$w2;
+						$min_x=$x2+$w2;
+						$sx1=$dx;
+						$sx2=0;
+					} else {
+						$dx=$x1-$x2;
+						$sx1=$dx;
+						$sx2=0;
+					}
+				} else {
+					if ($x2 > $x1+$w1){
+						$dx=$x2-$x1-$w1;
+						$min_x=$x1+$w1;
+						$sx1=0;
+						$sx2=$dx;
+					} else {
+						$dx=$x2-$x1;
+						$sx1=0;
+						$sx2=$dx;
+					}
 				}
 				if($y1>$y2){
 					$sy1=$h;
-					$sy2=0;
+					$sy2=1;
 				}elseif($y1==$y2){
-					$h=2;
-					$sy1=0;
-					$sy2=0;
+					$h=4;
+					$sy1=1;
+					$sy2=1;
 				}else{
-					$sy1=0;
+					$sy1=1;
 					$sy2=$h;
 				}
 			}
-			echo '<svg class="del1 upd1" id="ref-'.$name.'.'.$i.'-'.$j.':'.$target_name.'.'.$ref[1][$key].'" height="'.$h.'" width="'.($w+10).'" style="top:'.$min_y.'px;left:'.($min_x-10).'px">';
+			echo '<svg class="del1 upd1" id="ref-'.$name.'.'.$i.'-'.$j.':'.$target_name.'.'.$ref[1][$key].'"
+height="'.$h.'" width="'.$dx.'" style="top:'.$min_y.'px; left:'.$min_x.'px">';
 			if($sx1==$sx2){
 				echo '<path d="M10,0 c-10,0 -10,'.$h.' 0,'.$h.'" class="selfref" />';
 			} else {
-				echo '<line x1="'.($sx1+10).'" y1="'.$sy1.'" x2="'.($sx2+10).'" y2="'.$sy2.'" />';
+				echo '<line x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'" />';
 			}
 			echo '</svg>';
 		}
@@ -405,10 +428,33 @@ foreach ($schema as $name => $table) {
 <input type="checkbox" id="s_querylog">
 <label for="s_querylog" id="showqueryloglabel">Show Log</label>
 <label for="s_querylog" id="hidequeryloglabel">Hide Log</label>
+<style>
+.v4{ background-color:transparent;}
+.v3{ background-color:rgba(127,255,0,0.1);}
+.v2{ background-color:rgba(255,255,0,0.2);}
+.v1{ background-color:rgba(255,191,0,0.5);}
+.v0{ background-color:rgba(255,127,0,0.5);}
+.vbad{ background-color:rgba(255,0,0,0.5);}
+</style>
 <div id="querylog">
 <?php
+# $GLOBALS['querylog'] depends on where the queries are catches and logged (get_rows() for instance, but also others.
 foreach ($GLOBALS['querylog'] as $q){
-	echo '<pre>'.htmlspecialchars($q).'</pre>';
+	if ($q[2]-$q[1] < 0.0001){
+		$c='v4';
+	} elseif ($q[2]-$q[1] < 0.001){
+		$c='v3';
+	} elseif ($q[2]-$q[1] < 0.01){
+		$c='v2';
+	} elseif ($q[2]-$q[1] < 0.1){
+		$c='v1';
+	} elseif ($q[2]-$q[1] < 1){
+		$c='v0';
+	} else{
+		# all queries over >=1 second
+		$c='vbad';
+	}
+	echo '<pre class="'.$c.'">'.round($q[2]-$q[1], 6).': '.htmlspecialchars($q[0]).'</pre>';
 }
 ?>
 </div>

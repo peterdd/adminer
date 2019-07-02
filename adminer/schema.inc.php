@@ -1,7 +1,8 @@
 <?php
 page_header(lang('Database schema'), "", array(), h(DB . ($_GET["ns"] ? ".$_GET[ns]" : "")));
 
-# Arial-like free font
+# Arial-like free font for calculation string length in pixel
+# installed this debian package: fonts-liberation2
 $font='/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf';
 $fontbold='/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf';
 

@@ -97,49 +97,41 @@ foreach ($tables  as $table => $table_status) {
 $schemawidth=$viewportwidth;
 $schemaheight=$top + $maxheight;
 
-$sort_default=false;
-$sort_fieldcount=false;
-$sort_fieldcount_desc=false;
-$sort_cookie=false;
-$sort_name=false;
 
+$sort=false;
 if (isset($_POST['sort'])){
-	if ($_POST['sort']=='name'){
-		$sort_name=true;
-	} elseif ($_POST['sort']=='fieldcount'){
-		$sort_fieldcount=true;
-	} elseif ($_POST['sort']=='fieldcount_desc'){
-		$sort_fieldcount_desc=true;
-	} elseif ($_POST['sort']=='cookie'){
-		$sort_cookie=true;
-	} else{
-		$sort_cookie=true;
+	if ($_POST['sort']==='name'){
+		$sort='name';
+	} elseif ($_POST['sort']==='fieldcount'){
+		$sort='fieldcount';
+	} elseif ($_POST['sort']==='fieldcount_desc'){
+		$sort='fieldcount_desc';
+	} elseif ($_POST['sort']==='cookie'){
+		$sort='cookie';
 	}
-} else {
-	$sort_cookie=true;
 }
 ?>
 <form action="" method="post" class="sortform">
-<button <?= $sort_default ? 'class="highlight" ':'' ?>name="sort" value="name" onclick="this.form.submit();">Name</button>
+<button <?= $sort=='name' ? 'disabled="disabled" ':'' ?>name="sort" value="name">Name</button>
+<button <?= $sort=='fieldcount' ? 'disabled="disabled" ':'' ?>name="sort" value="fieldcount">Fields</button>
+<button <?= $sort=='fieldcount_desc' ? 'disabled="disabled" ':'' ?>name="sort" value="fieldcount_desc">Fields desc</button>
+<button <?= $sort=='cookie' ? 'disabled="disabled" ':'' ?>name="sort" value="cookie">Coords Cookie</button>
 </form>
-<form action="" method="post" class="sortform">
-<button <?= $sort_fieldcount ? 'class="highlight" ':'' ?>name="sort" value="fieldcount" onclick="this.form.submit();">Fields</button>
-</form>
-<form action="" method="post" class="sortform">
-<button <?= $sort_fieldcount_desc ? 'class="highlight" ':'' ?>name="sort" value="fieldcount_desc" onclick="this.form.submit();">Fields desc</button>
-</form>
-<form action="" method="post" class="sortform">
-<button <?= $sort_cookie ? 'class="highlight" ':'' ?>name="sort" value="cookie" onclick="this.form.submit();">Coords Cookie</button>
-</form>
-<input type="checkbox" id="s_showfields">
-<label id="showfieldslabel" for="s_showfields">Hide fields</label>
+<input name="showfields" type="radio" id="s_shownofields">
+<label id="shownofieldslabel" for="s_shownofields">no</label>
+<input name="showfields" type="radio" id="s_showpkfields">
+<label id="showpkfieldslabel" for="s_showpkfields">PK</label>
+<input name="showfields" type="radio" id="s_showallfields">
+<label id="showallfieldslabel" for="s_showallfields">all</label>
 <div id="minimap">
 	<div id="whereami"></div>
 	<div id="visible"><div id="dragme"></div></div>
 </div>
 <div id="miniinfo"></div>
 <style>
-.highlight {background-color:#999;}
+form.sortform button {cursor:pointer;}
+form.sortform button:disabled {background-color:#696;color:#fff;border:inset;}
+#showfieldslabel{cursor:pointer;}
 #content{width:max-content;}
 .sortform{display:inline-block;}
 #schema{
@@ -157,11 +149,16 @@ if (isset($_POST['sort'])){
 }
 .table span{display:block;line-height:11px;}
 .table i span {font-style:normal;background-color:#cf6;}
-#s_showfields{display:none;}
-#s_showfields:checked ~ #schema .table span{display:none; }
-#s_showfields:checked ~ #showfieldslabel {background:#9f9; background:transparent; opacity:0.4;}
-#s_showfields:checked ~ #showfieldslabel:before{content:'show fields'; border-radius:4px;}
-#showfieldslabel {display:inline-block;margin:2px;background:#eee; border:1px solid #ccc; padding:3px;border-radius:4px;}
+input[name=showfields]{display:none;}
+#s_shownofields:checked ~ #schema .table span{display:none; }
+#s_showpkfields:checked ~ #schema .table span {display:none; }
+#s_showpkfields:checked ~ #schema .table i span {display:block; }
+#showallfieldslabel, #showpkfieldslabel, #shownofieldslabel {display:inline-block;margin:2px;background:#eee; border:1px solid #ccc; padding:3px;border-radius:4px;}
+#s_shownofields:checked  ~ #shownofieldslabel,
+#s_showpkfields:checked  ~ #showpkfieldslabel,
+#s_showallfields:checked ~ #showallfieldslabel {
+	background-color:#696;color:#fff;
+}
 #minimap{
 <?php
 	$minimapmax = 40000;

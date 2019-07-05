@@ -1,4 +1,8 @@
 <?php
+/*
+* rewrite of schema visualisation by https://github.com/peterdd
+*/
+
 page_header(lang('Database schema'), "", array(), h(DB . ($_GET["ns"] ? ".$_GET[ns]" : "")));
 
 # Arial-like free font for calculation string length in pixel
@@ -11,31 +15,53 @@ $hasfontbold=file_exists($fontbold);
 
 $table_pos = array();
 $table_pos_js = array();
-$SCHEMA = ($_GET["schema"] ? $_GET["schema"] : $_COOKIE["adminer_schema-" . str_replace(".", "_", DB)]); // $_COOKIE["adminer_schema"] was used before 3.2.0 //! ':' in table name
-preg_match_all('~([^:]+):([-0-9.]+)x([-0-9.]+)(_|$)~', $SCHEMA, $matches, PREG_SET_ORDER);
+$SCHEMA = ($_GET["schema"] ? $_GET["schema"] : $_COOKIE["adminer_schema-" . str_replace(".", "_", DB)]);
+// $_COOKIE["adminer_schema"] was used before 3.2.0
+//! ':' in table name
+preg_match_all('/([^:]+):([\-0-9.]+)x([\-0-9.]+)(_|$)/', $SCHEMA, $matches, PREG_SET_ORDER);
 foreach ($matches as $i => $match) {
 	$table_pos[$match[1]] = array($match[2], $match[3]);
 	$table_pos_js[] = "\n\t'" . js_escape($match[1]) . "': [ $match[2], $match[3] ]";
 }
 
 $schema = array(); // table => array("fields" => array(name => field), "pos" => array(top, left), "references" => array(table => array(left => array(source, target))))
-$referenced = array(); // target_table => array(table => array(left => target_column))
-$lefts = array(); // float => bool
+#$referenced = array(); // target_table => array(table => array(left => target_column))
+#$lefts = array(); // float => bool
 
 $tcounter=0;
 $top=0;
 $minleft=0;
 $maxheight=0;
-/* TODO: width calculate based on area required for the schema, so needs so sum area of each table to calculate a square final layout */
-$viewportwidth=1000; # in px
-$tables=table_status('',true);
+/**
+* TODO: width calculate based on area required for the schema, needs sum area of each table to estimate a final appealing rectangle layout
+* maybe get current viewport width of browser from request to detect rough orientation (portrait - landscape)
+*/
+$viewportwidth=1200; # ranges from 400(very few tables) to 4000(e.g. magento) or more
+$tables=table_status('', true);
 #echo print_r($tables);
+
+/**
+* TODO: autogenerate best colors depending on current schema data
+* TODO: for dark themes
+* for bright themes
+* linecolors when not used by 'ON DELETE' or 'ON UPDATE' line svg/css rules
+*/
+$linecolors=array(
+	'#c00','#003','#900','#c60','#060', '#090','#099','#036','#009','#909','#309'
+);
+
+$ccount = count($linecolors);
+
+$t = 0;
 foreach ($tables as $table => $table_status) {
-	$f=0;
+	$f = 0;
 	foreach (fields($table) as $name => $field) {
 		$f++;
 	}
-	$tables[$table]['fcount']=$f;
+	$tables[$table]['fcount'] = $f;
+	$tables[$table]['refcount'] = 0;
+	$tables[$table]['refcolor'] = $t % $ccount;
+	$t++;
 }
 
 $fcount = array_column($tables, 'fcount');
@@ -46,8 +72,8 @@ if(isset($_POST['sort']) && $_POST['sort']=='fieldcount_desc'){
 	array_multisort($fcount, SORT_DESC, $tables);
 }
 #echo print_r($tables);
-$monowidth=6;
-foreach ($tables  as $table => $table_status) {
+$monowidth = 6;
+foreach ($tables as $table => $table_status) {
 	if (is_view($table_status)) {
 		continue;
 	}
@@ -61,6 +87,7 @@ foreach ($tables  as $table => $table_status) {
 	}
 
 	$schema[$table]["fields"] = array();
+	$schema[$table]["refcolor"]= $tables[$table]['refcolor'];
 	$pos = 10;
 	foreach (fields($table) as $name => $field) {
 		$pos += 11;
@@ -77,24 +104,27 @@ foreach ($tables  as $table => $table_status) {
 
 	if ( ($minleft+$tablewidth) > $viewportwidth ) {
 		$top = $top + $maxheight + 20;
-		$maxheight=0;
-		$minleft=0;
+		$maxheight = 0;
+		$minleft = 0;
 	}
 	$maxheight = max($maxheight, $pos);
 
 	$schema[$table]['pos'] = array( $minleft, $top );
 	$schema[$table]['w'] = $tablewidth;
-	$minleft=$minleft+$tablewidth+20;
+	$minleft = $minleft+$tablewidth+20;
 	#print_r($schema[$table]);
 	#echo '('.$schema[$table]["pos"][0].' '.$schema[$table]["pos"][1].') ';
 
 	foreach ($adminer->foreignKeys($table) as $val) {
+		#$debugfk[] = $val;
 		if (!$val["db"]) {
-			if ($table_pos[$table][1] || $table_pos[$val["table"]][1]) {
-				$left = min($table_pos[$table][1], $table_pos[$val["table"]][1]);
-			}
-			$schema[$table]["references"][$val["table"]][] = array($val["source"], $val["target"]);
-			$referenced[$val["table"]][$table][] = $val["target"];
+			#if ($table_pos[$table][1] || $table_pos[$val["table"]][1]) {
+			#	$left = min($table_pos[$table][1], $table_pos[$val["table"]][1]);
+			#}
+			#$schema[$table]['references'][$val['table']][] = array($val['source'], $val['target']);
+			$schema[$table]['references'][] = $val;
+			$schema[$val['target']]['refcount']++;
+			#$referenced[$val['table']][$table][] = $val['target'];
 		}
 	}
 	$tcounter++;
@@ -102,37 +132,90 @@ foreach ($tables  as $table => $table_status) {
 $schemawidth=$viewportwidth;
 $schemaheight=$top + $maxheight;
 
+#echo '<pre>';print_r($debugfk);die();
+#echo '<pre>';print_r($schema);die();
 
-$sort=false;
+$sort = false;
 if (isset($_POST['sort'])){
-	if ($_POST['sort']==='name'){
-		$sort='name';
-	} elseif ($_POST['sort']==='fieldcount'){
-		$sort='fieldcount';
-	} elseif ($_POST['sort']==='fieldcount_desc'){
-		$sort='fieldcount_desc';
-	} elseif ($_POST['sort']==='cookie'){
-		$sort='cookie';
+	if ($_POST['sort'] === 'name'){
+		$sort = 'name';
+	} elseif ($_POST['sort'] === 'fieldcount'){
+		$sort = 'fieldcount';
+	} elseif ($_POST['sort'] === 'fieldcount_desc'){
+		$sort = 'fieldcount_desc';
+	} elseif ($_POST['sort'] === 'cookie'){
+		$sort = 'cookie';
+	} elseif ($_POST['sort'] === 'spring'){
+		$sort = 'spring';
 	}
 }
 ?>
 <form action="" method="post" id="sortform">
-<button <?= $sort=='name' ? 'disabled="disabled" ':'' ?>name="sort" value="name">Name</button>
-<button <?= $sort=='fieldcount' ? 'disabled="disabled" ':'' ?>name="sort" value="fieldcount">Fields</button>
-<button <?= $sort=='fieldcount_desc' ? 'disabled="disabled" ':'' ?>name="sort" value="fieldcount_desc">Fields desc</button>
-<button <?= $sort=='cookie' ? 'disabled="disabled" ':'' ?>name="sort" value="cookie">Coords Cookie</button>
+<fieldset>
+<legend>layout</legend>
+<button <?= $sort == 'name' ? 'disabled="disabled" ':'' ?>name="sort" value="name">table name</button>
+<button <?= $sort == 'fieldcount' ? 'disabled="disabled" ':'' ?>name="sort" value="fieldcount">fieldcount</button>
+<button <?= $sort == 'fieldcount_desc' ? 'disabled="disabled" ':'' ?>name="sort" value="fieldcount_desc">fieldcount desc</button>
+<button <?= $sort == 'cookie' ? 'disabled="disabled" ':'' ?>name="sort" value="cookie" title="read positions from adminer_schema cookie">cookie coords (TODO)</button>
+<?php 
+# TODO: Test if connection is mysql/mariadb and phpmyadmin's pma__ tables exists and accessible by current user
+if(true): ?>
+<button <?= $sort == 'pma' ? 'disabled="disabled" ':'' ?>name="sort" value="pma" title="read positions from phpmyadmin's designer pma__ tables">pma coords (TODO)</button>
+<?php endif; ?>
+<button <?= $sort == 'spring' ? 'disabled="disabled" ':'' ?>name="sort" value="spring">spring (TODO)</button>
+</fieldset>
 </form>
-<input name="showfields" type="radio" id="s_shownofields">
-<label id="shownofieldslabel" for="s_shownofields">no</label>
-<input name="showfields" type="radio" id="s_showpkfields">
-<label id="showpkfieldslabel" for="s_showpkfields">PK</label>
-<input name="showfields" type="radio" id="s_showallfields">
-<label id="showallfieldslabel" for="s_showallfields">all</label>
+<input name="showfields" type="radio" id="s_shownofields"/>
+<input name="showfields" type="radio" id="s_showpkfields"/>
+<input name="showfields" type="radio" id="s_showpkfkfields"/>
+<input name="showfields" type="radio" id="s_showallfields"/>
+<input name="showtables" type="radio" id="s_showalltables"/>
+<input name="showtables" type="radio" id="s_showconntables"/>
+<fieldset id="showfieldsgroup">
+<legend>field filter</legend>
+<label class="radiogroup" id="shownofieldslabel" for="s_shownofields">no</label>
+<label class="radiogroup" id="showpkfieldslabel" for="s_showpkfields">pk</label>
+<label class="radiogroup" id="showpkfkfieldslabel" for="s_showpkfkfields">pk+fk</label>
+<label class="radiogroup" id="showallfieldslabel" for="s_showallfields">all</label>
+</fieldset>
+<fieldset id="showtablesgroup">
+<legend>table filter</legend>
+<label class="radiogroup" id="showalltableslabel" for="s_showalltables">all</label>
+<label class="radiogroup" id="showconntableslabel" for="s_showconntables">connected (TODO)</label>
+</fieldset>
+<input type="checkbox" id="s_minimap" checked="checked"/>
+<label for="s_minimap" title="-moz-element() works currently(2019) only in Firefox" id="showminimaplabel">minimap</label>
+<input type="checkbox" id="s_miniinfo"/>
+<label for="s_miniinfo" id="showminiinfolabel">info</label>
+<input type="checkbox" id="s_legend"/>
+<label for="s_legend" id="showlegendlabel">legend</label>
+<div id="legend" style="position:fixed;background:#ccc;box-shadow:0 0 20px #000;max-width:620px;margin-left:auto;margin-right:auto;z-index:100;">
+	<div style="display:inline-block;vertical-align:top;width:300px;">
+	<div style="text-align:center">ON DELETE</div>
+	<div>CASCADE <svg class="d_cascade" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div>SET DEFAULT <svg class="d_setdefault" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div>SET NULL <svg class="d_null" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div>RESTRICT <svg class="d_restrict" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div>unknown<svg class="d_unknown" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	</div>
+	<div style="display:inline-block;vertical-align:top;width:300px;">
+	<div style="text-align:center">ON UPDATE</div>
+	<div>CASCADE <svg class="u_cascade" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div>SET DEFAULT <svg class="u_setdefault" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div>SET NULL <svg class="u_null" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div>RESTRICT <svg class="u_restrict" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div>unknown<svg class="u_unknown" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	</div>
+</div>
 <div id="minimap">
 	<div id="whereami"></div>
 	<div id="visible"><div id="dragme"></div></div>
+	<label for="s_minimap" title="hide minimap" id="hideminimaplabel">X</label>
 </div>
-<div id="miniinfo"></div>
+<div id="miniinfo">
+	<div id="miniinfocontent"></div>
+	<label for="s_miniinfo" title="hide miniinfo" id="hideminiinfolabel">X</label>
+</div>
 <style>
 form#sortform button {cursor:pointer;padding:0 6px;}
 form#sortform button:disabled {
@@ -152,21 +235,48 @@ form#sortform button:disabled {
 	margin-left:0;
 	height:<?= $schemaheight ?>px;width:<?= $schemawidth ?>px;
 	font-size:10px;
+	transform-origin:top left;
 }
 #schema svg {position:absolute;}
-#schema svg path {stroke:rgb(0,0,255);stroke-width:1;fill:none;opacity:0.5; }
-#schema svg line {stroke:rgb(0,102,0);stroke-width:1;opacity:0.5; }
-.table {
-	background-color:#ddd;
+
+svg line, svg path {fill:none; stroke-width:1; stroke:rgba(0,0,0,0.5);}
+svg.d_cascade line, svg.d_cascade path {}
+svg.d_setnull line, svg.d_setnull path {stroke-dasharray: 0;}
+svg.d_setdefault line, svg.d_setdefault path {stroke-dasharray: 0;}
+svg.d_noaction line, svg.d_noaction path {stroke-dasharray: 0;}
+svg.d_restrict line, svg.d_restrict path {stroke-dasharray: 0;}
+
+svg.u_cascade line, svg.u_cascade path {stroke-width:1;}
+svg.u_setnull line, svg.u_setnull path {stroke-width:1;}
+svg.u_setdefault line, svg.u_setdefault path {stroke-width:1;}
+svg.u_noaction line, svg.u_noaction path {stroke-width:1;}
+svg.u_restrict line, svg.u_restrict path {stroke-width:1;}
+
+#schema .table {
+	/*background-color:#ddd;*/
+	padding:0;
 	font-family:<?= ($hasfont && function_exists('imagettfbbox')) ? 'sans-serif':'monospace'; ?>
 }
-.table span{display:block;line-height:11px;}
-.table i span {font-style:normal;background-color:#ff6;}
+.table div {background-color:#ccc;}
+.table a {color:#009;font-weight:bold;}
+.table span{display:block;line-height:11px; background:rgba(220,220,220,0.95);padding-left:2px;padding-right:2px;}
+.table span.pk {background-color:#ff6;}
+.table span.pk.fk {background-color:#ff6;
+	/* the color stripes idea reduces readability of field name */
+	/*background-image:repeating-linear-gradient(135deg, #ff0,  #ff0 4px, #cff 7px, #cff 10px);*/
+	/*background-image:linear-gradient(#fff, #fff 5%, #fc0 5%, #cff 50%, #fc0 95%, #fff 95%, #fff 100%);*/
+	background-image:linear-gradient(to right, #ff6, #cff);
+}
+.table span.fk {background-color:#cff;}
 input[name=showfields]{display:none;}
+input[name=showtables]{display:none;}
 #s_shownofields:checked ~ #schema .table span{display:none; }
 #s_showpkfields:checked ~ #schema .table span {display:none; }
-#s_showpkfields:checked ~ #schema .table i span {display:block; }
-#showallfieldslabel, #showpkfieldslabel, #shownofieldslabel {
+#s_showpkfields:checked ~ #schema .table span.pk {display:block; }
+#s_showpkfkfields:checked ~ #schema .table span {visibility:hidden; /* temp hack so svg lines still align to pk fk field */}
+#s_showpkfkfields:checked ~ #schema .table span.pk {display:block;visibility:visible;/* temp hack */ }
+#s_showpkfkfields:checked ~ #schema .table span.fk {display:block;visibility:visible;/* temp hack */ }
+label.radiogroup {
 	cursor:pointer;
 	display:inline-block;
 	background:#eee;
@@ -174,9 +284,27 @@ input[name=showfields]{display:none;}
 	padding:0 6px;
 	border-radius:4px;
 }
-#s_shownofields:checked  ~ #shownofieldslabel,
-#s_showpkfields:checked  ~ #showpkfieldslabel,
-#s_showallfields:checked ~ #showallfieldslabel {
+h2{margin-bottom:0;}
+fieldset, fieldset#showtablesgroup, fieldset#showfieldsgroup {
+	background:#ddd;
+	border-radius:4px;
+	border:none;
+	margin:0.5em 0;
+	padding:0.5em;
+}
+fieldset legend{
+	background:#ddd;
+	border-radius:4px;
+	padding-left:0.5em;
+	padding-right:0.5em;
+	margin-left:-0.5em; /* see fieldset padding-left */
+}
+#s_showalltables:checked  ~ fieldset #showalltableslabel,
+#s_showconntables:checked  ~ fieldset #showconntableslabel,
+#s_shownofields:checked  ~ fieldset #shownofieldslabel,
+#s_showpkfields:checked  ~ fieldset #showpkfieldslabel,
+#s_showpkfkfields:checked  ~ fieldset #showpkfkfieldslabel,
+#s_showallfields:checked ~ fieldset #showallfieldslabel {
 	background-color:#696;
 	color:#fff;
 	border-bottom-color:#9b9;
@@ -203,6 +331,17 @@ input[name=showfields]{display:none;}
 	border:1px solid #666;
 	box-shadow:0 0 20px #999;
 }
+#minimap{display:none;}
+/*#s_minimap{display:none;}*/
+#hideminimaplabel, #showminimaplabel{cursor:pointer;background:#ddd;padding:0;border-radius:3px;z-index:10;}
+#hideminimaplabel{display:none;position:absolute;top:-1em;right:0;}
+#showminimaplabel{display:inline-block;}
+#s_minimap:checked ~ #minimap {display:block;}
+/*#s_minimap:checked ~ #showminimaplabel {display:none;}*/
+#s_minimap:checked ~ #minimap #hideminimaplabel {display:inline-block;}
+#legend {display:none;}
+#s_legend:checked ~ #legend {display:block;}
+
 #whereami{
 	border:1px solid rgba(255,0,0,0.6);
 	width:2px;
@@ -211,7 +350,7 @@ input[name=showfields]{display:none;}
 	position:absolute;
 }
 #visible{
-	border: 1px solid rgba(100,100,100,0.3);
+	border: 1px solid rgba(100,100,100,0.4);
 	width:0;
 	height:0;
 	box-sizing:content-box;
@@ -225,13 +364,22 @@ input[name=showfields]{display:none;}
 #miniinfo{
 	position:fixed;
 	bottom:20px;
-	right:200px;
 	z-index:10;
 	vertical-align:bottom;
-	width:200px;
+	width:320px;
 	border: 1px solid #ccc;
 	background-color:#fff;
+	display:none;
+	box-shadow:0 0 20px #999;
 }
+#miniinfocontent{overflow:auto;word-wrap:anywhere;}
+/*#s_miniinfo{display:none;}*/
+#hideminiinfolabel, #showminiinfolabel{cursor:pointer;background:#ddd;padding:0;border-radius:3px;}
+#hideminiinfolabel{display:none;position:absolute;right:0;top:-1em;}
+#showminiinfolabel{display:inline-block;}
+#s_miniinfo:checked ~ #miniinfo {display:block;}
+/*#s_miniinfo:checked ~ #showminiinfolabel {display:none;}*/
+#s_miniinfo:checked ~ #miniinfo #hideminiinfolabel {display:inline-block;}
 </style>
 <script<?php echo nonce(); ?>>
 var tablePos = {<?php echo implode(",", $table_pos_js) . "\n"; ?>};
@@ -241,6 +389,9 @@ document.addEventListener('DOMContentLoaded', function () {
 	document.getElementById('visible').addEventListener('click', dragMinimap);
 	window.addEventListener('resize', updateMinimap);
 	window.addEventListener('scroll', updateMinimap);
+	document.getElementById('schemazoom').addEventListener('change', setzoom);
+	/* mmh, will it recalculate the right sizes when after setzoom the boundingClientRect() values changed? Or is it race condition? */
+	document.getElementById('schemazoom').addEventListener('change', updateMinimap);
 
 	qs('#schema').onselectstart = function () { return false; };
 	document.onmousemove = schemaMousemove;
@@ -267,14 +418,36 @@ function dragMinimap(event){
 	*/
 	window.scrollTo(sx*schema.width,sy*schema.height);
 }
+function setzoom(){
+	zoom=document.getElementById('schemazoom').value;
+	console.log(zoom);
+	document.getElementById('schema').style['transform']='scale('+zoom+')';
+	document.getElementById('schemazoomvalue').innerHTML= zoom*100 +'%';
+}
+/*
+taken from https://stackoverflow.com/questions/5639346/what-is-the-shortest-function-for-reading-a-cookie-by-name-in-javascript
+*/
+function getCookieValue(a) {
+    var b = document.cookie.match('(^|[^;]+)\\s*' + a + '\\s*=\\s*([^;]+)');
+    return b ? b.pop() : '';
+}
 function updateMinimap(event) {
 	schema=document.getElementById('schema').getBoundingClientRect();
 	minimap=document.getElementById('minimap').getBoundingClientRect();
-	/*
-	document.getElementById('miniinfo').innerHTML= 'schema:' + schema.width + ' x ' + schema.height
-		+ '<br>mouse:' + event.clientX + ' x ' + event.clientY
-		+ '<br>window:' + window.innerWidth + ' x ' + window.innerHeight;
-	*/
+
+	/* show coords cookie of current schema */
+	var coords=getCookieValue('adminer_schema-' + '<?= DB ?>');
+	//console.log(coords);
+	/* due bad adminer_schema cookie serialization */
+	//var coords2=coords.match(/([^%3A]+)%3A([\-0-9.]+)x([\-0-9.]+)(_|$)/g);
+	//console.log(coords2);
+
+	document.getElementById('miniinfocontent').innerHTML= 'schema:' + schema.width + ' x ' + schema.height
+		/* + '<br>mouse:' + event.clientX + ' x ' + event.clientY */
+		+ '<br/>window:' + window.innerWidth + ' x ' + window.innerHeight;
+
+		// + '<br/>' + coords;
+
 	if(event.clientX-schema.left >0 ){
 		document.getElementById('whereami').style['left'] = minimap.width * (event.clientX-schema.left) / schema.width + 'px';
 	}else{
@@ -334,91 +507,142 @@ function updateMinimap(event) {
 	}
 }
 </script>
+<label style="display:inline-block;background:#ddd;border-radius:4px;">
+<input id="schemazoom" type="range" value='1' min="0.1" max="1.5" step="0.1"/>
+<span id="schemazoomvalue"></span>
+</label>
 <div id="schema">
 <?php
-#echo '<pre>';
-#print_r($schema);
+
+#echo '<pre>';print_r($schema);
+$i=0;
 foreach ($schema as $name => $table) {
-	$i=0;
-	foreach ((array) $table["references"] as $target_name => $refs) {
-		$i++;
+	#foreach ((array) $table["references"] as $target_name => $refs) {
+	foreach ((array) $table['references'] as $refs) {
+		#echo '<pre>'.$name.' references ';print_r($refs);echo '</pre>';die();
 		$j=0;
-		foreach ($refs as $left => $ref) {
-			$j++;
-			foreach ($ref[0] as $key => $source) {
+		switch($refs['on_delete']){
+			case 'CASCADE': $cdel='d_cascade'; break;
+			case 'SET NULL': $cdel='d_setnull'; break;
+			case 'SET DEFAULT': $cdel='d_setdefault'; break;
+			case 'NO ACTION': $cdel='d_noaction'; break;
+			case 'RESTRICT': $cdel='d_restrict'; break;
+			default: $cdel='d_unknown';
+
+		}
+		switch($refs['on_update']){
+			case 'CASCADE': $cupd='u_cascade'; break;
+			case 'SET NULL': $cupd='u_setnull'; break;
+			case 'SET DEFAULT': $cupd='u_setdefault'; break;
+			case 'NO ACTION': $cupd='u_noaction'; break;
+			case 'RESTRICT': $cupd='u_restrict'; break;
+			default: $cupd='u_unknown';
+
+		}
+		foreach ($refs['source'] as $ref) {
+				$fktable=$table;
+				$fkfield=$table['fields'][$ref];
+				# store if fields is a foreign key also in the field info of $schema for css class later
+				$schema[$name]['fields'][$ref]['fk']=1;
+				$pktable=$refs['table'];
+				# TODO calculate proper color value of referenced table
+				$pktablecolor=$linecolors[$schema[$pktable]['refcolor']];
+				$pkfield=$refs['target'][$j];
+				#echo '<pre>';print_r($schema[$pktable]);die();
+ 				#echo '<pre>';print_r($fkfield);die();
+ 				#echo '<pre>';print_r($pkfield);die();
+
 				$x1 = $table["pos"][0];
 				$w1 = $table['w'];
-				$x2 = $schema[$target_name]['pos'][0];
-				$w2 = $schema[$target_name]['w'];
+				$x2 = $schema[$pktable]['pos'][0];
+				$w2 = $schema[$pktable]['w'];
 				$min_x = min($x1, $x2);
 				$max_x = max($x1+$w1, $x2+$w2);
 				$dx=abs($x1-$x2); # when tables quite vertical aligned
 
-				$y1 = $table['pos'][1] + $table['fields'][$source]['pos'];
-				$y2 = $schema[$target_name]['pos'][1] + $schema[$target_name]['fields'][$ref[1][$key]]['pos'];
+				$y1 = $table['pos'][1] + $fkfield['pos'];
+				$y2 = $schema[$pktable]['pos'][1] + $schema[$pktable]['fields'][$pkfield]['pos'];
 				$min_y = min($y1, $y2);
 				$max_y = max($y1, $y2);
-				$h=abs($y1-$y2);
-				if ($dx < 2){
-					$dx=20;
-					$min_x=$min_x-10;
-					$sx1=0;
-					$sx2=0;
+				$h = abs($y1-$y2);
+				if ($dx < 6){
+					$dx = 20;
+					$min_x = $min_x-20;
+					$sx1 = 0;
+					$sx2 = 0;
 				} elseif ($x1>$x2){
 					if ($x1 > $x2+$w2 ){
 						$dx=$x1-$x2-$w2;
-						$min_x=$x2+$w2;
-						$sx1=$dx;
-						$sx2=0;
+						$min_x = $x2+$w2;
+						$sx1 = $dx;
+						$sx2 = 0;
 					} else {
-						$dx=$x1-$x2;
-						$sx1=$dx;
-						$sx2=0;
+						$dx = $x1-$x2;
+						$sx1 = $dx;
+						$sx2 = 0;
 					}
 				} else {
 					if ($x2 > $x1+$w1){
-						$dx=$x2-$x1-$w1;
-						$min_x=$x1+$w1;
-						$sx1=0;
-						$sx2=$dx;
+						$dx = $x2-$x1-$w1;
+						$min_x = $x1+$w1;
+						$sx1 = 0;
+						$sx2 = $dx;
 					} else {
-						$dx=$x2-$x1;
-						$sx1=0;
-						$sx2=$dx;
+						$dx = $x2-$x1;
+						$sx1 = 0;
+						$sx2 = $dx;
 					}
 				}
-				if($y1>$y2){
-					$sy1=$h;
-					$sy2=1;
-				}elseif($y1==$y2){
-					$h=4;
-					$sy1=1;
-					$sy2=1;
-				}else{
-					$sy1=1;
-					$sy2=$h;
+				if ($y1>$y2){
+					$sy1 = $h;
+					$sy2 = 1;
+				} elseif ($y1==$y2){
+					$h = 4;
+					$sy1 = 1;
+					$sy2 = 1;
+				} else {
+					$sy1 = 1;
+					$sy2 = $h;
 				}
-			}
-			echo '<svg class="del1 upd1" id="ref-'.$name.'.'.$i.'-'.$j.':'.$target_name.'.'.$ref[1][$key].'"
-height="'.$h.'" width="'.$dx.'" style="top:'.$min_y.'px; left:'.$min_x.'px">';
+			echo '<svg class="'.$cdel.' '.$cupd.'" id="ref-'.$name.'.'.$ref.':'.$pktable.'.'.$pkfield.'" height="'.$h.'" width="'.$dx.'" style="top:'.$min_y.'px; left:'.$min_x.'px">';
 			if($sx1==$sx2){
-				echo '<path d="M10,0 c-10,0 -10,'.$h.' 0,'.$h.'" class="selfref" />';
+				#echo '<path d="M20,0 c-20,0 -20,'.$h.' 0,'.$h.'" style="stroke-width:7;stroke:'.$pktablecolor.';opacity:0.2"/>';
+				echo '<path d="M20,0 c-20,0 -20,'.$h.' 0,'.$h.'" style="stroke-width:1;stroke:'.$pktablecolor.'"/>';
+				#echo '<path d="M20,0 c-20,0 -20,'.$h.' 0,'.$h.'" style="stroke-dasharray:3,8;stroke-width:3;stroke:#fff"/>';
 			} else {
-				echo '<line x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'" />';
+				#echo '<line x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'" style="stroke-width:3;stroke:'.$pktablecolor.';opacity:0.2"/>';
+				echo '<line x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'" style="stroke-width:1;stroke:'.$pktablecolor.'"/>';
+				#echo '<line x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'" style="stroke-dasharray:1,8;stroke-width:3;stroke:#000"/>';
 			}
 			echo '</svg>';
+
+			$j++;
 		}
 	}
+	$i++;
 }
 
 foreach ($schema as $name => $table) {
-	echo "<div class='table' style='left:".$table["pos"][0]."px;top:".$table["pos"][1]."px'>";
-	echo '<a href="' . h(ME) . 'table=' . urlencode($name) . '"><b>' . h($name) . "</b></a>";
+	# set table width too for exact svg line ends and collapsing columns does not autochange table width
+	echo "<div class='table' style='left:".$table['pos'][0]."px;top:".$table['pos'][1]."px;width:".$table['w']."px'>";
+	# we might put more info into that first row in future
+	echo '<div>';
+	echo '<a href="' . h(ME) . 'table=' . urlencode($name) . '">' . h($name) . "</a>";
+	echo '</div>';
 	echo script("qsl('div.table').onmousedown = schemaMousedown;");
 
-	foreach ($table["fields"] as $field) {
-		$val = '<span' . type_class($field["type"]) . ' title="' . h($field["full_type"] . ($field["null"] ? " NULL" : '')) . '">' . h($field["field"]) . '</span>';
-		echo ($field["primary"] ? "<i>$val</i>" : $val);
+	foreach ($table['fields'] as $field) {
+		#if ($name=='tasks'){ echo '</div><pre>'; print_r($field); print_r($table);die(); }
+		$class = '';
+		if($field['primary']){
+			$class='pk';
+		}
+		if($field['fk']==1){
+			$class.=' fk';
+		}
+		$class = trim($class);
+		$val = '<span'.($class !='' ? ' class="'.$class.'"':''). type_class($field["type"]) . ' title="' . h($field["full_type"] . ($field["null"] ? " NULL" : '')) . '">' . h($field["field"]) . '</span>';
+		echo $val;
 	}
 	echo "</div>";
 }

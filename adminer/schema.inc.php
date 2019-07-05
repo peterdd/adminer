@@ -116,8 +116,8 @@ foreach ($tables as $table => $table_status) {
 	#echo '('.$schema[$table]["pos"][0].' '.$schema[$table]["pos"][1].') ';
 
 	foreach ($adminer->foreignKeys($table) as $val) {
-		#$debugfk[] = $val;
-		if (!$val["db"]) {
+		#$debugfk[] = $val; 
+		if (!$val['db'] || $val['db'] == DB) {
 			#if ($table_pos[$table][1] || $table_pos[$val["table"]][1]) {
 			#	$left = min($table_pos[$table][1], $table_pos[$val["table"]][1]);
 			#}
@@ -146,7 +146,7 @@ if (isset($_POST['sort'])){
 	} elseif ($_POST['sort'] === 'cookie'){
 		$sort = 'cookie';
 	} elseif ($_POST['sort'] === 'spring'){
-		$sort = 'spring';
+		$sort = 'springw';
 	}
 }
 ?>
@@ -168,6 +168,7 @@ if(true): ?>
 <input name="showfields" type="radio" id="s_shownofields"/>
 <input name="showfields" type="radio" id="s_showpkfields"/>
 <input name="showfields" type="radio" id="s_showpkfkfields"/>
+<input name="showfields" type="radio" id="s_showindexfields"/>
 <input name="showfields" type="radio" id="s_showallfields"/>
 <input name="showtables" type="radio" id="s_showalltables"/>
 <input name="showtables" type="radio" id="s_showconntables"/>
@@ -176,6 +177,7 @@ if(true): ?>
 <label class="radiogroup" id="shownofieldslabel" for="s_shownofields">no</label>
 <label class="radiogroup" id="showpkfieldslabel" for="s_showpkfields">pk</label>
 <label class="radiogroup" id="showpkfkfieldslabel" for="s_showpkfkfields">pk+fk</label>
+<label class="radiogroup" id="showindexfieldslabel" for="s_showindexfields">index</label>
 <label class="radiogroup" id="showallfieldslabel" for="s_showallfields">all</label>
 </fieldset>
 <fieldset id="showtablesgroup">

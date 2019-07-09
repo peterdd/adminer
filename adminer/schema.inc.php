@@ -28,6 +28,7 @@ $schema = array(); // table => array("fields" => array(name => field), "pos" => 
 #$referenced = array(); // target_table => array(table => array(left => target_column))
 #$lefts = array(); // float => bool
 
+$lineheight=11; # field height in px
 $tcounter=0;
 $top=0;
 $minleft=0;
@@ -88,9 +89,8 @@ foreach ($tables as $table => $table_status) {
 
 	$schema[$table]["fields"] = array();
 	$schema[$table]["refcolor"]= $tables[$table]['refcolor'];
-	$pos = 10;
+	$pos = $lineheight; # below table name assuming tablename is same height as field height.
 	foreach (fields($table) as $name => $field) {
-		$pos += 11;
 		$field["pos"] = $pos;
 		$schema[$table]["fields"][$name] = $field;
 		if ($hasfont && function_exists('imagettfbbox')){
@@ -100,6 +100,7 @@ foreach ($tables as $table => $table_status) {
 			$fieldwidth = strlen($field['field'])*$monowidth;
 		}
 		$tablewidth = max($tablewidth, $fieldwidth);
+		$pos += $lineheight;
 	}
 
 	if ( ($minleft+$tablewidth) > $viewportwidth ) {
@@ -116,7 +117,8 @@ foreach ($tables as $table => $table_status) {
 	#echo '('.$schema[$table]["pos"][0].' '.$schema[$table]["pos"][1].') ';
 
 	foreach ($adminer->foreignKeys($table) as $val) {
-		#$debugfk[] = $val; 
+		#$debugfk[] = $val;
+
 		if (!$val['db'] || $val['db'] == DB) {
 			#if ($table_pos[$table][1] || $table_pos[$val["table"]][1]) {
 			#	$left = min($table_pos[$table][1], $table_pos[$val["table"]][1]);
@@ -146,16 +148,18 @@ if (isset($_POST['sort'])){
 	} elseif ($_POST['sort'] === 'cookie'){
 		$sort = 'cookie';
 	} elseif ($_POST['sort'] === 'spring'){
-		$sort = 'springw';
+		$sort = 'spring';
 	}
 }
 ?>
 <form action="" method="post" id="sortform">
 <fieldset>
 <legend>layout</legend>
+<?php /* maybe replace with a select if there are too many possibilities. */ ?>
 <button <?= $sort == 'name' ? 'disabled="disabled" ':'' ?>name="sort" value="name">table name</button>
 <button <?= $sort == 'fieldcount' ? 'disabled="disabled" ':'' ?>name="sort" value="fieldcount">fieldcount</button>
 <button <?= $sort == 'fieldcount_desc' ? 'disabled="disabled" ':'' ?>name="sort" value="fieldcount_desc">fieldcount desc</button>
+<br>
 <button <?= $sort == 'cookie' ? 'disabled="disabled" ':'' ?>name="sort" value="cookie" title="read positions from adminer_schema cookie">cookie coords (TODO)</button>
 <?php 
 # TODO: Test if connection is mysql/mariadb and phpmyadmin's pma__ tables exists and accessible by current user
@@ -163,6 +167,10 @@ if(true): ?>
 <button <?= $sort == 'pma' ? 'disabled="disabled" ':'' ?>name="sort" value="pma" title="read positions from phpmyadmin's designer pma__ tables">pma coords (TODO)</button>
 <?php endif; ?>
 <button <?= $sort == 'spring' ? 'disabled="disabled" ':'' ?>name="sort" value="spring">spring (TODO)</button>
+<select name="lines">
+<option value="">tablecolors</option>
+<option value="snake">constraintcolors</option>
+</select>
 </fieldset>
 </form>
 <input name="showfields" type="radio" id="s_shownofields"/>
@@ -177,7 +185,7 @@ if(true): ?>
 <label class="radiogroup" id="shownofieldslabel" for="s_shownofields">no</label>
 <label class="radiogroup" id="showpkfieldslabel" for="s_showpkfields">pk</label>
 <label class="radiogroup" id="showpkfkfieldslabel" for="s_showpkfkfields">pk+fk</label>
-<label class="radiogroup" id="showindexfieldslabel" for="s_showindexfields">index</label>
+<label class="radiogroup" id="showindexfieldslabel" for="s_showindexfields">index (TODO)</label>
 <label class="radiogroup" id="showallfieldslabel" for="s_showallfields">all</label>
 </fieldset>
 <fieldset id="showtablesgroup">
@@ -185,29 +193,29 @@ if(true): ?>
 <label class="radiogroup" id="showalltableslabel" for="s_showalltables">all</label>
 <label class="radiogroup" id="showconntableslabel" for="s_showconntables">connected (TODO)</label>
 </fieldset>
-<input type="checkbox" id="s_minimap" checked="checked"/>
-<label for="s_minimap" title="-moz-element() works currently(2019) only in Firefox" id="showminimaplabel">minimap</label>
-<input type="checkbox" id="s_miniinfo"/>
-<label for="s_miniinfo" id="showminiinfolabel">info</label>
-<input type="checkbox" id="s_legend"/>
-<label for="s_legend" id="showlegendlabel">legend</label>
-<div id="legend" style="position:fixed;background:#ccc;box-shadow:0 0 20px #000;max-width:620px;margin-left:auto;margin-right:auto;z-index:100;">
+<input type="checkbox" id="s_minimap" checked="checked"/><label for="s_minimap" title="-moz-element() works currently(2019) only in Firefox" id="showminimaplabel">minimap</label>
+<input type="checkbox" id="s_miniinfo"/><label for="s_miniinfo" id="showminiinfolabel">info</label>
+<input type="checkbox" id="s_legend"/><label for="s_legend" id="showlegendlabel">legend</label>
+<div id="legend" style="position:fixed;background:#eee;box-shadow:0 0 20px 0 #000;max-width:620px;left:auto;margin-left:auto;margin-right:auto;z-index:100;">
 	<div style="display:inline-block;vertical-align:top;width:300px;">
 	<div style="text-align:center">ON DELETE</div>
-	<div>CASCADE <svg class="d_cascade" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
-	<div>SET DEFAULT <svg class="d_setdefault" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
-	<div>SET NULL <svg class="d_null" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
-	<div>RESTRICT <svg class="d_restrict" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
-	<div>unknown<svg class="d_unknown" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div><span>CASCADE</span><svg class="d_cascade" height="10" width="100"><line class="del" x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div><span>SET DEFAULT</span><svg class="d_setdefault" height="10" width="100"><line class="del" x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div><span>SET NULL</span><svg class="d_setnull" height="10" width="100"><line class="del" x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div><span>NO ACTION</span><svg class="d_noaction" height="10" width="100"><line class="del" x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div><span>RESTRICT</span><svg class="d_restrict" height="10" width="100"><line class="del" x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div><span>unknown</span><svg class="d_unknown" height="10" width="100"><line class="del" x1="10" y1="4" x2="90" y2="4"></line></svg></div>
 	</div>
 	<div style="display:inline-block;vertical-align:top;width:300px;">
 	<div style="text-align:center">ON UPDATE</div>
-	<div>CASCADE <svg class="u_cascade" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
-	<div>SET DEFAULT <svg class="u_setdefault" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
-	<div>SET NULL <svg class="u_null" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
-	<div>RESTRICT <svg class="u_restrict" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
-	<div>unknown<svg class="u_unknown" height="10" width="100"><line x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div><span>CASCADE</span><svg class="u_cascade" height="10" width="100"><line class="upd" x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div><span>SET DEFAULT</span><svg class="u_setdefault" height="10" width="100"><line class="upd" x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div><span>SET NULL</span><svg class="u_setnull" height="10" width="100"><line class="upd" x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div><span>NO ACTION</span><svg class="u_noaction" height="10" width="100"><line class="upd" x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div><span>RESTRICT</span><svg class="u_restrict" height="10" width="100"><line class="upd" x1="10" y1="4" x2="90" y2="4"></line></svg></div>
+	<div><span>unknown</span><svg class="u_unknown" height="10" width="100"><line class="upd" x1="10" y1="4" x2="90" y2="4"></line></svg></div>
 	</div>
+	<label for="s_legend" title="hide constraints legend" id="hidelegendlabel">X</label>
 </div>
 <div id="minimap">
 	<div id="whereami"></div>
@@ -241,27 +249,71 @@ form#sortform button:disabled {
 }
 #schema svg {position:absolute;}
 
-svg line, svg path {fill:none; stroke-width:1; stroke:rgba(0,0,0,0.5);}
-svg.d_cascade line, svg.d_cascade path {}
-svg.d_setnull line, svg.d_setnull path {stroke-dasharray: 0;}
-svg.d_setdefault line, svg.d_setdefault path {stroke-dasharray: 0;}
-svg.d_noaction line, svg.d_noaction path {stroke-dasharray: 0;}
-svg.d_restrict line, svg.d_restrict path {stroke-dasharray: 0;}
+#legend{
+	position:fixed;
+	background:#eee;
+	box-shadow:0 0 20px 0 #000;
+	left:auto;
+	margin-left:auto;
+	margin-right:auto;
+	z-index:10;
+}
+#legend div span{width:100px;display:inline-block;text-align:right;}
 
-svg.u_cascade line, svg.u_cascade path {stroke-width:1;}
-svg.u_setnull line, svg.u_setnull path {stroke-width:1;}
-svg.u_setdefault line, svg.u_setdefault path {stroke-width:1;}
-svg.u_noaction line, svg.u_noaction path {stroke-width:1;}
-svg.u_restrict line, svg.u_restrict path {stroke-width:1;}
+svg line, svg path {fill:none; stroke:#000;}
+<?php if (isset($_POST['lines']) && $_POST['lines']=='snake') : ?>
+/*
+update/delete rules for the alternating line color, pkcolor as thick light
+
+pkcolor:lightgreenlightgreenlightgreenlightegreen...
+updnoactionblue|delcascaderedredred|updnoactionblue|delcascaderedredred|...
+pkcolor:lightgreenlightgreenlightgreenlightegreen...
+*/
+
+svg line, svg path {stroke-width:2px;}
+svg line.del, svg path.del { stroke-dasharray: 8 6; stroke-dashoffset: 0;}
+svg line.upd, svg path.upd { stroke-dasharray: 4 10; stroke-dashoffset: 5;}
+svg.d_cascade .del, svg.u_cascade .upd {stroke:#c00;}
+svg.d_setnull .del, svg.u_setnull .upd {stroke:#00f;}
+svg.d_setdefault .del, svg.u_setdefault .upd {stroke:#c0c;}
+svg.d_restrict .del, svg.u_restrict .upd {stroke:#000;}
+svg.d_noaction .del, svg.u_noaction .upd {stroke:#090;}
+svg.d_unknown .del, svg.u_unknown .upd {stroke:#999;}
+
+
+/* update/delete rules for the alternating line color, pkcolor as thick light */
+
+<?php else: ?>
+/* pkcolor as linecolor, dasharray for delete rules, thick light dasharray for update rules */
+svg line.upd, svg path.upd {stroke-linecap: round;}
+svg.d_cascade line.del, svg.d_cascade path.del {}
+svg.d_setdefault line.del, svg.d_setdefault path.del {stroke-dasharray: 2 8 14 8;}
+svg.d_setnull line.del, svg.d_setnull path.del {stroke-dasharray: 16 16;}
+svg.d_noaction line.del, svg.d_noaction path.del {stroke-dasharray: 2 6;}
+svg.d_restrict line.del, svg.d_restrict path.del {stroke-dasharray: 1 8; stroke-width:6;}
+svg.d_unknown line.del, svg.u_restrict path.del {stroke-dasharray: 2; stroke-width:1;}
+
+svg.u_cascade line.upd, svg.u_cascade path.upd {stroke-width:6;stroke-opacity:0.2;}
+svg.u_setdefault line.upd, svg.u_setdefault path.upd {stroke-width:6;stroke-opacity:0.2; stroke-dasharray: 6 4 18 4; stroke-linecap:butt;}
+svg.u_setnull line.upd, svg.u_setnull path.upd   {stroke-width:6;stroke-opacity:0.2; stroke-dasharray: 16 12 4 0;}
+svg.u_noaction line.upd, svg.u_noaction path.upd {stroke-width:6;stroke-opacity:0.2; stroke-dasharray: 1 7;}
+svg.u_restrict line.upd, svg.u_restrict path.upd {stroke-width:11;stroke-opacity:0.4;
+	stroke-dasharray: 2 6 1 0;
+	stroke-linecap:butt;
+	animation: strokeanim 2s infinite linear;
+}
+svg.u_unknown line.upd, svg.u_restrict path.upd  {stroke-width:6;stroke-opacity:0.2; stroke-dasharray: 2;}
+<?php endif; ?>
 
 #schema .table {
 	/*background-color:#ddd;*/
 	padding:0;
-	font-family:<?= ($hasfont && function_exists('imagettfbbox')) ? 'sans-serif':'monospace'; ?>
+	font-family:<?= ($hasfont && function_exists('imagettfbbox')) ? 'sans-serif':'monospace'; ?>;
+	box-sizing:border-box;
 }
 .table div {background-color:#ccc;}
 .table a {color:#009;font-weight:bold;}
-.table span{display:block;line-height:11px; background:rgba(220,220,220,0.95);padding-left:2px;padding-right:2px;}
+.table span{display:block;line-height:<?= $lineheight ?>px; background:rgba(220,220,220,0.95);padding-left:2px;padding-right:2px;}
 .table span.pk {background-color:#ff6;}
 .table span.pk.fk {background-color:#ff6;
 	/* the color stripes idea reduces readability of field name */
@@ -301,12 +353,15 @@ fieldset legend{
 	padding-right:0.5em;
 	margin-left:-0.5em; /* see fieldset padding-left */
 }
-#s_showalltables:checked  ~ fieldset #showalltableslabel,
-#s_showconntables:checked  ~ fieldset #showconntableslabel,
-#s_shownofields:checked  ~ fieldset #shownofieldslabel,
-#s_showpkfields:checked  ~ fieldset #showpkfieldslabel,
-#s_showpkfkfields:checked  ~ fieldset #showpkfkfieldslabel,
-#s_showallfields:checked ~ fieldset #showallfieldslabel {
+#s_showalltables:checked ~ fieldset #showalltableslabel,
+#s_showconntables:checked ~ fieldset #showconntableslabel,
+#s_shownofields:checked ~ fieldset #shownofieldslabel,
+#s_showpkfields:checked ~ fieldset #showpkfieldslabel,
+#s_showpkfkfields:checked ~ fieldset #showpkfkfieldslabel,
+#s_showallfields:checked ~ fieldset #showallfieldslabel,
+#s_minimap:checked ~ #showminimaplabel,
+#s_miniinfo:checked ~ #showminiinfolabel,
+#s_legend:checked ~ #showlegendlabel {
 	background-color:#696;
 	color:#fff;
 	border-bottom-color:#9b9;
@@ -333,16 +388,35 @@ fieldset legend{
 	border:1px solid #666;
 	box-shadow:0 0 20px #999;
 }
-#minimap{display:none;}
-/*#s_minimap{display:none;}*/
-#hideminimaplabel, #showminimaplabel{cursor:pointer;background:#ddd;padding:0;border-radius:3px;z-index:10;}
-#hideminimaplabel{display:none;position:absolute;top:-1em;right:0;}
-#showminimaplabel{display:inline-block;}
+/* no hit area gap between checkbox and label */
+input[type=checkbox]{margin-right:0;cursor:pointer;border:4px solid #999;}
+#minimap, #miniinfo, #legend {display:none;}
+#s_minimap, #s_miniinfo, #s_legend {display:none;}
+
 #s_minimap:checked ~ #minimap {display:block;}
-/*#s_minimap:checked ~ #showminimaplabel {display:none;}*/
-#s_minimap:checked ~ #minimap #hideminimaplabel {display:inline-block;}
-#legend {display:none;}
 #s_legend:checked ~ #legend {display:block;}
+#s_miniinfo:checked ~ #miniinfo {display:block;}
+
+#showminimaplabel, #showminiinfolabel, #showlegendlabel {
+	cursor:pointer;
+	background:#ddd;
+	padding:0 10px;
+	margin-left:0;
+	border-radius:3px;
+	display:inline-block;
+}
+#hideminimaplabel, #hideminiinfolabel, #hidelegendlabel {
+	cursor:pointer;
+	background:#999;
+	padding:0 10px 0 10px;
+	border-top-left-radius:3px;
+	border-top-right-radius:3px;
+	z-index:10;
+	position:absolute;
+	top:-20px;
+	right:0;
+	height:19px;
+}
 
 #whereami{
 	border:1px solid rgba(255,0,0,0.6);
@@ -371,17 +445,9 @@ fieldset legend{
 	width:320px;
 	border: 1px solid #ccc;
 	background-color:#fff;
-	display:none;
 	box-shadow:0 0 20px #999;
 }
 #miniinfocontent{overflow:auto;word-wrap:anywhere;}
-/*#s_miniinfo{display:none;}*/
-#hideminiinfolabel, #showminiinfolabel{cursor:pointer;background:#ddd;padding:0;border-radius:3px;}
-#hideminiinfolabel{display:none;position:absolute;right:0;top:-1em;}
-#showminiinfolabel{display:inline-block;}
-#s_miniinfo:checked ~ #miniinfo {display:block;}
-/*#s_miniinfo:checked ~ #showminiinfolabel {display:none;}*/
-#s_miniinfo:checked ~ #miniinfo #hideminiinfolabel {display:inline-block;}
 </style>
 <script<?php echo nonce(); ?>>
 var tablePos = {<?php echo implode(",", $table_pos_js) . "\n"; ?>};
@@ -518,6 +584,7 @@ function updateMinimap(event) {
 
 #echo '<pre>';print_r($schema);
 $i=0;
+$lineyoffset=$lineheight/2; # lineheight of fields
 foreach ($schema as $name => $table) {
 	#foreach ((array) $table["references"] as $target_name => $refs) {
 	foreach ((array) $table['references'] as $refs) {
@@ -548,7 +615,11 @@ foreach ($schema as $name => $table) {
 				$schema[$name]['fields'][$ref]['fk']=1;
 				$pktable=$refs['table'];
 				# TODO calculate proper color value of referenced table
-				$pktablecolor=$linecolors[$schema[$pktable]['refcolor']];
+				if(isset($_POST['lines']) && $_POST['lines']=='snake'){
+					$pktablecolor=false;
+				}else{
+					$pktablecolor=$linecolors[$schema[$pktable]['refcolor']];
+				}
 				$pkfield=$refs['target'][$j];
 				#echo '<pre>';print_r($schema[$pktable]);die();
  				#echo '<pre>';print_r($fkfield);die();
@@ -565,11 +636,11 @@ foreach ($schema as $name => $table) {
 				$y1 = $table['pos'][1] + $fkfield['pos'];
 				$y2 = $schema[$pktable]['pos'][1] + $schema[$pktable]['fields'][$pkfield]['pos'];
 				$min_y = min($y1, $y2);
-				$max_y = max($y1, $y2);
-				$h = abs($y1-$y2);
+				$max_y = max($y1, $y2)+$lineheight;
+				$h = abs($y1-$y2)+$lineheight;
 				if ($dx < 6){
-					$dx = 20;
-					$min_x = $min_x-20;
+					$dx = 10;
+					$min_x = $min_x-10;
 					$sx1 = 0;
 					$sx2 = 0;
 				} elseif ($x1>$x2){
@@ -596,25 +667,23 @@ foreach ($schema as $name => $table) {
 					}
 				}
 				if ($y1>$y2){
-					$sy1 = $h;
-					$sy2 = 1;
+					$sy1 = $h-$lineyoffset;
+					$sy2 = 1+$lineyoffset;
 				} elseif ($y1==$y2){
-					$h = 4;
-					$sy1 = 1;
-					$sy2 = 1;
+					$h = $lineheight;
+					$sy1 = $lineyoffset;
+					$sy2 = $lineyoffset;
 				} else {
-					$sy1 = 1;
-					$sy2 = $h;
+					$sy1 = 1+$lineyoffset;
+					$sy2 = $h-$lineyoffset;
 				}
 			echo '<svg class="'.$cdel.' '.$cupd.'" id="ref-'.$name.'.'.$ref.':'.$pktable.'.'.$pkfield.'" height="'.$h.'" width="'.$dx.'" style="top:'.$min_y.'px; left:'.$min_x.'px">';
 			if($sx1==$sx2){
-				#echo '<path d="M20,0 c-20,0 -20,'.$h.' 0,'.$h.'" style="stroke-width:7;stroke:'.$pktablecolor.';opacity:0.2"/>';
-				echo '<path d="M20,0 c-20,0 -20,'.$h.' 0,'.$h.'" style="stroke-width:1;stroke:'.$pktablecolor.'"/>';
-				#echo '<path d="M20,0 c-20,0 -20,'.$h.' 0,'.$h.'" style="stroke-dasharray:3,8;stroke-width:3;stroke:#fff"/>';
+				echo '<path class="upd" d="M10,0 c-10,0 -10,'.$h.' 0,'.$h.'"'.($pktablecolor ? ' style="stroke:'.$pktablecolor :'').'"/>';
+				echo '<path class="del" d="M10,0 c-10,0 -10,'.$h.' 0,'.$h.'"'.($pktablecolor ? ' style="stroke:'.$pktablecolor :'').'"/>';
 			} else {
-				#echo '<line x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'" style="stroke-width:3;stroke:'.$pktablecolor.';opacity:0.2"/>';
-				echo '<line x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'" style="stroke-width:1;stroke:'.$pktablecolor.'"/>';
-				#echo '<line x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'" style="stroke-dasharray:1,8;stroke-width:3;stroke:#000"/>';
+				echo '<line class="upd" x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'"'.($pktablecolor ? ' style="stroke:'.$pktablecolor :'').'"/>';
+				echo '<line class="del" x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'"'.($pktablecolor ? ' style="stroke:'.$pktablecolor :'').'"/>';
 			}
 			echo '</svg>';
 

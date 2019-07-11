@@ -52,7 +52,7 @@ $linecolors=array(
 );
 
 $ccount = count($linecolors);
-
+$em=1;
 $t = 0;
 foreach ($tables as $table => $table_status) {
 	$f = 0;
@@ -62,24 +62,42 @@ foreach ($tables as $table => $table_status) {
 	$tables[$table]['fcount'] = $f;
 	$tables[$table]['refcount'] = 0;
 	$tables[$table]['refcolor'] = $t % $ccount;
+	if($table_pos[$table]){
+		# orig store obscure em values
+		$tables[$table]['pos'][0]=$table_pos[$table][0];
+		$tables[$table]['pos'][1]=$table_pos[$table][1];
+	}
 	$t++;
 }
 
+$layout = false;
 $fcount = array_column($tables, 'fcount');
-if(isset($_POST['sort']) && $_POST['sort']=='fieldcount'){
-	array_multisort($fcount, SORT_ASC, $tables);
+if (isset($_POST['layout'])){
+	if ($_POST['layout'] === 'name'){
+		$layout = 'name';
+	} elseif ($_POST['layout'] === 'fieldcount'){
+		$layout = 'fieldcount';
+		array_multisort($fcount, SORT_ASC, $tables);
+	} elseif ($_POST['layout'] === 'fieldcount_desc'){
+		$layout = 'fieldcount_desc';
+		array_multisort($fcount, SORT_DESC, $tables);
+	} elseif ($_POST['layout'] === 'cookie'){
+		$layout = 'cookie';
+	} elseif ($_POST['layout'] === 'spring'){
+		$layout = 'spring';
+	}
+} else{
+	$layout='name';
 }
-if(isset($_POST['sort']) && $_POST['sort']=='fieldcount_desc'){
-	array_multisort($fcount, SORT_DESC, $tables);
-}
-#echo print_r($tables);
+
+#echo '<pre>';print_r($tables);die();
 $monowidth = 6;
 foreach ($tables as $table => $table_status) {
 	if (is_view($table_status)) {
 		continue;
 	}
 
-	$tablewidth=40;
+	$tablewidth=40; # minimal table width in px
 	if ($hasfontbold && function_exists('imagettfbbox')){
 		$b = imagettfbbox(8, 0, $fontbold, $table);
 		$tablewidth = max([$b[0],$b[2],$b[4],$b[6]]) - min([$b[0],$b[2],$$b[4],$b[6]]);
@@ -110,7 +128,11 @@ foreach ($tables as $table => $table_status) {
 	}
 	$maxheight = max($maxheight, $pos);
 
-	$schema[$table]['pos'] = array( $minleft, $top );
+	if($layout=='cookie'){
+		$schema[$table]['pos'] = $tables[$table]['pos'];
+	}else{
+		$schema[$table]['pos'] = array( $minleft, $top );
+	}
 	$schema[$table]['w'] = $tablewidth;
 	$minleft = $minleft+$tablewidth+20;
 	#print_r($schema[$table]);
@@ -137,36 +159,22 @@ $schemaheight=$top + $maxheight;
 #echo '<pre>';print_r($debugfk);die();
 #echo '<pre>';print_r($schema);die();
 
-$sort = false;
-if (isset($_POST['sort'])){
-	if ($_POST['sort'] === 'name'){
-		$sort = 'name';
-	} elseif ($_POST['sort'] === 'fieldcount'){
-		$sort = 'fieldcount';
-	} elseif ($_POST['sort'] === 'fieldcount_desc'){
-		$sort = 'fieldcount_desc';
-	} elseif ($_POST['sort'] === 'cookie'){
-		$sort = 'cookie';
-	} elseif ($_POST['sort'] === 'spring'){
-		$sort = 'spring';
-	}
-}
 ?>
-<form action="" method="post" id="sortform">
+<form action="" method="post" id="layoutform">
 <fieldset>
 <legend>layout</legend>
 <?php /* maybe replace with a select if there are too many possibilities. */ ?>
-<button <?= $sort == 'name' ? 'disabled="disabled" ':'' ?>name="sort" value="name">table name</button>
-<button <?= $sort == 'fieldcount' ? 'disabled="disabled" ':'' ?>name="sort" value="fieldcount">fieldcount</button>
-<button <?= $sort == 'fieldcount_desc' ? 'disabled="disabled" ':'' ?>name="sort" value="fieldcount_desc">fieldcount desc</button>
+<button <?= $layout == 'name' ? 'disabled="disabled" ':'' ?>name="layout" value="name">table name</button>
+<button <?= $layout == 'fieldcount' ? 'disabled="disabled" ':'' ?>name="layout" value="fieldcount">fieldcount</button>
+<button <?= $layout == 'fieldcount_desc' ? 'disabled="disabled" ':'' ?>name="layout" value="fieldcount_desc">fieldcount desc</button>
 <br>
-<button <?= $sort == 'cookie' ? 'disabled="disabled" ':'' ?>name="sort" value="cookie" title="read positions from adminer_schema cookie">cookie coords (TODO)</button>
+<button <?= $layout == 'cookie' ? 'disabled="disabled" ':'' ?>name="layout" value="cookie" title="read positions from adminer_schema cookie">cookie coords</button>
 <?php 
 # TODO: Test if connection is mysql/mariadb and phpmyadmin's pma__ tables exists and accessible by current user
 if(true): ?>
-<button <?= $sort == 'pma' ? 'disabled="disabled" ':'' ?>name="sort" value="pma" title="read positions from phpmyadmin's designer pma__ tables">pma coords (TODO)</button>
+<button <?= $layout == 'pma' ? 'disabled="disabled" ':'' ?>name="layout" value="pma" title="read positions from phpmyadmin designer pma__ tables">pma coords (TODO)</button>
 <?php endif; ?>
-<button <?= $sort == 'spring' ? 'disabled="disabled" ':'' ?>name="sort" value="spring">spring (TODO)</button>
+<button <?= $layout == 'spring' ? 'disabled="disabled" ':'' ?>name="layout" value="spring">spring (TODO)</button>
 <select name="lines">
 <option value="">tablecolors</option>
 <option value="snake">constraintcolors</option>
@@ -227,8 +235,8 @@ if(true): ?>
 	<label for="s_miniinfo" title="hide miniinfo" id="hideminiinfolabel">X</label>
 </div>
 <style>
-form#sortform button {cursor:pointer;padding:0 6px;}
-form#sortform button:disabled {
+form#layoutform button {cursor:pointer;padding:0 6px;}
+form#layoutform button:disabled {
 	color:#fff;
 	border-width:1px;
 	border-radius:4px;
@@ -239,7 +247,7 @@ form#sortform button:disabled {
 	border-left-color:#363;
 }
 #content{width:max-content;}
-#sortform{display:inline-block;}
+#layoutform{display:inline-block;}
 #schema{
 	background:#fff;
 	margin-left:0;
@@ -451,7 +459,7 @@ input[type=checkbox]{margin-right:0;cursor:pointer;border:4px solid #999;}
 </style>
 <script<?php echo nonce(); ?>>
 var tablePos = {<?php echo implode(",", $table_pos_js) . "\n"; ?>};
-var em=14.4; // I use px, but do not want change existing adminer scripts..
+var em=1; // I use px, but do not want change existing adminer scripts..
 document.addEventListener('DOMContentLoaded', function () {
 	/* document.getElementById('schema').addEventListener('mousemove', updateMinimap); */
 	document.getElementById('visible').addEventListener('click', dragMinimap);
@@ -695,7 +703,7 @@ foreach ($schema as $name => $table) {
 
 foreach ($schema as $name => $table) {
 	# set table width too for exact svg line ends and collapsing columns does not autochange table width
-	echo "<div class='table' style='left:".$table['pos'][0]."px;top:".$table['pos'][1]."px;width:".$table['w']."px'>";
+	echo "<div class='table' id='".h(DB).".".h($name)."' style='left:".$table['pos'][0]."px;top:".$table['pos'][1]."px;width:".$table['w']."px'>";
 	# we might put more info into that first row in future
 	echo '<div>';
 	echo '<a href="' . h(ME) . 'table=' . urlencode($name) . '">' . h($name) . "</a>";

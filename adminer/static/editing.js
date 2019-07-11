@@ -654,40 +654,40 @@ function schemaMousedown(event) {
 */
 function schemaMousemove(event) {
 	if (that !== undefined) {
-		var left = (event.clientX - x) / em;
-		var top = (event.clientY - y) / em;
+		var left = (event.clientX - x);
+		var top = (event.clientY - y);
 		var divs = qsa('div', that);
 		var lineSet = { };
 		for (var i=0; i < divs.length; i++) {
 			if (divs[i].className == 'references') {
 				var div2 = qs('[id="' + (/^refs/.test(divs[i].id) ? 'refd' : 'refs') + divs[i].id.substr(4) + '"]');
-				var ref = (tablePos[divs[i].title] ? tablePos[divs[i].title] : [ div2.parentNode.offsetTop / em, 0 ]);
+				var ref = (tablePos[divs[i].title] ? tablePos[divs[i].title] : [ div2.parentNode.offsetTop, 0 ]);
 				var left1 = -1;
 				var id = divs[i].id.replace(/^ref.(.+)-.+/, '$1');
 				if (divs[i].parentNode != div2.parentNode) {
 					left1 = Math.min(0, ref[1] - left) - 1;
-					divs[i].style.left = left1 + 'em';
-					divs[i].querySelector('div').style.width = -left1 + 'em';
+					divs[i].style.left = left1 + 'px';
+					divs[i].querySelector('div').style.width = -left1 + 'px';
 					var left2 = Math.min(0, left - ref[1]) - 1;
-					div2.style.left = left2 + 'em';
-					div2.querySelector('div').style.width = -left2 + 'em';
+					div2.style.left = left2 + 'px';
+					div2.querySelector('div').style.width = -left2 + 'px';
 				}
 				if (!lineSet[id]) {
 					var line = qs('[id="' + divs[i].id.replace(/^....(.+)-.+$/, 'refl$1') + '"]');
-					var top1 = top + divs[i].offsetTop / em;
-					var top2 = top + div2.offsetTop / em;
+					var top1 = top + divs[i].offsetTop;
+					var top2 = top + div2.offsetTop;
 					if (divs[i].parentNode != div2.parentNode) {
 						top2 += ref[0] - top;
-						line.querySelector('div').style.height = Math.abs(top1 - top2) + 'em';
+						line.querySelector('div').style.height = Math.abs(top1 - top2) + 'px';
 					}
-					line.style.left = (left + left1) + 'em';
-					line.style.top = Math.min(top1, top2) + 'em';
+					line.style.left = (left + left1) + 'px';
+					line.style.top = Math.min(top1, top2) + 'px';
 					lineSet[id] = true;
 				}
 			}
 		}
-		that.style.left = left + 'em';
-		that.style.top = top + 'em';
+		that.style.left = left + 'px';
+		that.style.top = top + 'px';
 	}
 }
 
@@ -697,11 +697,34 @@ function schemaMousemove(event) {
 */
 function schemaMouseup(event, db) {
 	if (that !== undefined) {
-		tablePos[that.firstChild.firstChild.firstChild.data] = [ (event.clientY - y) / em, (event.clientX - x) / em ];
+		/*tablePos[that.firstChild.firstChild.firstChild.data] = [ (event.clientY - y) / em, (event.clientX - x) / em ];*/
+		tablePos[that.firstChild.firstChild.firstChild.data] = [ (event.clientX - y), (event.clientY - y)];
 		that = undefined;
+		/**
+		* storing the coords in a cookie is borked due 4k limit of cookies in web browser
+		* Alternatives:
+		* - IndexedDB (not sessionStorage or localStorage)
+		* - sending coord changes by ajax requests for serverside storage.
+		* also adminer_schema-dbname might not be sufficient, imaging same db exists in postgres and mysql
+		* or several mysql servers running on different ports that have same db names:
+		*  mysql: port3306: db:shopdb
+		*  mysql: port33333: db:shopdb
+		*  postgresql: db:shopdb
+		*
+		* So for serverside storage a sqlite3 tablecoords.db could do the job:
+		* diagram NULL (NULL is auto unnamed diagram)
+		* dbtype NOT NULL
+		* dbport NULL
+		* dbname NOT NULL
+		* tablename NOT NULL
+		* x default NULL (in pixel)
+		* y default NULL (in pixel)
+		* z default NULL, used as z-index or even as 3D coord)
+		* fieldfilter NULL (no, pk, pkfk)
+		*/
 		var s = '';
 		for (var key in tablePos) {
-			s += '_' + key + ':' + Math.round(tablePos[key][0] * 10000) / 10000 + 'x' + Math.round(tablePos[key][1] * 10000) / 10000;
+			s += '_' + key + ':' + Math.round(tablePos[key][0]) + 'x' + Math.round(tablePos[key][1]);
 		}
 		s = encodeURIComponent(s.substr(1));
 		var link = qs('#schema-link');

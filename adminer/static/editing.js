@@ -644,8 +644,11 @@ var that, x, y; // em and tablePos defined in schema.inc.php
 function schemaMousedown(event) {
 	if ((event.which ? event.which : event.button) == 1) {
 		that = this;
-		x = event.clientX - this.offsetLeft;
-		y = event.clientY - this.offsetTop;
+		//console.log('clientX:' + event.clientX + ' this.offsetLeft:' + this.offsetLeft + ' schemazoom:' + schemazoom.value);
+		x = this.offsetLeft;
+		cx=event.clientX;
+		y = this.offsetTop;
+		cy=event.clientY;
 	}
 }
 
@@ -654,8 +657,8 @@ function schemaMousedown(event) {
 */
 function schemaMousemove(event) {
 	if (that !== undefined) {
-		var left = (event.clientX - x);
-		var top = (event.clientY - y);
+		var left = x + (event.clientX - cx)/schemazoom.value;
+		var top = y +  (event.clientY - cy)/schemazoom.value;
 		var divs = qsa('div', that);
 		var lineSet = { };
 		for (var i=0; i < divs.length; i++) {
@@ -697,8 +700,8 @@ function schemaMousemove(event) {
 */
 function schemaMouseup(event, db) {
 	if (that !== undefined) {
-		/*tablePos[that.firstChild.firstChild.firstChild.data] = [ (event.clientY - y) / em, (event.clientX - x) / em ];*/
-		tablePos[that.firstChild.firstChild.firstChild.data] = [ (event.clientX - y), (event.clientY - y)];
+		console.log(that);
+		tablePos[that.firstChild.firstChild.firstChild.data] = [that.offsetLeft, that.offsetTop];
 		that = undefined;
 		/**
 		* storing the coords in a cookie is borked due 4k limit of cookies in web browser
@@ -724,7 +727,9 @@ function schemaMouseup(event, db) {
 		*/
 		var s = '';
 		for (var key in tablePos) {
-			s += '_' + key + ':' + Math.round(tablePos[key][0]) + 'x' + Math.round(tablePos[key][1]);
+			if(tablePos[key][0]<0){ tablePos[key][0]=0; }
+			if(tablePos[key][1]<0){ tablePos[key][1]=0; }
+			s += '_' + key + ':' + tablePos[key][0] + 'x' + tablePos[key][1];
 		}
 		s = encodeURIComponent(s.substr(1));
 		var link = qs('#schema-link');

@@ -25,7 +25,7 @@ foreach ($matches as $i => $match) {
 }
 
 $schema = array(); // table => array("fields" => array(name => field), "pos" => array(top, left), "references" => array(table => array(left => array(source, target))))
-#$referenced = array(); // target_table => array(table => array(left => target_column))
+$referenced = array(); // target_table => array(table => array(left => target_column))
 #$lefts = array(); // float => bool
 
 $lineheight=11; # field height in px
@@ -148,11 +148,13 @@ foreach ($tables as $table => $table_status) {
 			#$schema[$table]['references'][$val['table']][] = array($val['source'], $val['target']);
 			$schema[$table]['references'][] = $val;
 			$schema[$val['target']]['refcount']++;
-			#$referenced[$val['table']][$table][] = $val['target'];
+			$referenced[$val['table']][$table][] = $val['target'];
 		}
 	}
 	$tcounter++;
 }
+
+#echo '<pre>'; print_r($referenced);die();
 $schemawidth=$viewportwidth;
 $schemaheight=$top + $maxheight;
 
@@ -175,7 +177,7 @@ if(true): ?>
 <button <?= $layout == 'pma' ? 'disabled="disabled" ':'' ?>name="layout" value="pma" title="read positions from phpmyadmin designer pma__ tables">pma coords (TODO)</button>
 <?php endif; ?>
 <button <?= $layout == 'spring' ? 'disabled="disabled" ':'' ?>name="layout" value="spring">spring (TODO)</button>
-<select name="lines">
+<br/><select name="lines">
 <option value="">tablecolors</option>
 <option value="snake">constraintcolors</option>
 </select>
@@ -201,6 +203,7 @@ if(true): ?>
 <label class="radiogroup" id="showalltableslabel" for="s_showalltables">all</label>
 <label class="radiogroup" id="showconntableslabel" for="s_showconntables">connected (TODO)</label>
 </fieldset>
+<br/>
 <input type="checkbox" id="s_minimap" checked="checked"/><label for="s_minimap" title="-moz-element() works currently(2019) only in Firefox" id="showminimaplabel">minimap</label>
 <input type="checkbox" id="s_miniinfo"/><label for="s_miniinfo" id="showminiinfolabel">info</label>
 <input type="checkbox" id="s_legend"/><label for="s_legend" id="showlegendlabel">legend</label>
@@ -249,7 +252,10 @@ form#layoutform button:disabled {
 #content{width:max-content;}
 #layoutform{display:inline-block;}
 #schema{
-	background:#fff;
+	/* for debugging */
+	border: 1px solid #600;
+	background:#fef;
+
 	margin-left:0;
 	height:<?= $schemaheight ?>px;width:<?= $schemawidth ?>px;
 	font-size:10px;
@@ -392,7 +398,11 @@ fieldset legend{
 	position:fixed;
 	background-repeat: no-repeat;
 	background-color:rgba(255,255,255,0.9);
-	background: -moz-element(#schema) center / contain;
+	/*background: -moz-element(#schema) center / contain; */
+	background-position: left top;
+	background-repeat: no-repeat;
+	background-size:100%;
+	background-image: -moz-element(#schema);
 	border:1px solid #666;
 	box-shadow:0 0 20px #999;
 }
@@ -458,6 +468,8 @@ input[type=checkbox]{margin-right:0;cursor:pointer;border:4px solid #999;}
 #miniinfocontent{overflow:auto;word-wrap:anywhere;}
 </style>
 <script<?php echo nonce(); ?>>
+var schemawidth=<?= $schemawidth ?>;
+var schemaheight=<?= $schemaheight ?>;
 var tablePos = {<?php echo implode(",", $table_pos_js) . "\n"; ?>};
 var em=1; // I use px, but do not want change existing adminer scripts..
 document.addEventListener('DOMContentLoaded', function () {
@@ -473,6 +485,7 @@ document.addEventListener('DOMContentLoaded', function () {
 	document.onmousemove = schemaMousemove;
 	document.onmouseup = partialArg(schemaMouseup, '<?php echo js_escape(DB); ?>');
 
+	setzoom();
 	updateMinimap(this);
 });
 function dragMinimap(event){
@@ -498,7 +511,12 @@ function setzoom(){
 	zoom=document.getElementById('schemazoom').value;
 	console.log(zoom);
 	document.getElementById('schema').style['transform']='scale('+zoom+')';
-	document.getElementById('schemazoomvalue').innerHTML= zoom*100 +'%';
+	// a trick to adjust the height of #schema element for browser window layout
+	if(schemazoom.value<1){
+		document.getElementById('schema').style['margin-bottom']= - (1-schemazoom.value) * document.getElementById('schema').offsetHeight + 'px';
+	}
+	// sometimes firefox calculated ugly 110.000000001%, so lets round it..
+	document.getElementById('schemazoomvalue').innerHTML = Math.round(zoom*100) +'%';
 }
 /*
 taken from https://stackoverflow.com/questions/5639346/what-is-the-shortest-function-for-reading-a-cookie-by-name-in-javascript
@@ -510,6 +528,10 @@ function getCookieValue(a) {
 function updateMinimap(event) {
 	schema=document.getElementById('schema').getBoundingClientRect();
 	minimap=document.getElementById('minimap').getBoundingClientRect();
+	// XXX TODO: #minimap background-image: -moz-element does not get a fullsize image copy of #schema if the #schema has transform:scale() >1
+	// (maybe optimization of firefox to not render invisible areas?)
+	// in theory, 'background-size:contain;' should always do the job, right?  but...
+	document.getElementById('minimap').style['background-size']=(100/schemazoom.value)+'%';
 
 	/* show coords cookie of current schema */
 	var coords=getCookieValue('adminer_schema-' + '<?= DB ?>');

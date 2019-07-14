@@ -37,7 +37,6 @@ $maxheight=0;
 * TODO: width calculate based on area required for the schema, needs sum area of each table to estimate a final appealing rectangle layout
 * maybe get current viewport width of browser from request to detect rough orientation (portrait - landscape)
 */
-$viewportwidth=1200; # ranges from 400(very few tables) to 4000(e.g. magento) or more
 $tables=table_status('', true);
 #echo print_r($tables);
 
@@ -54,6 +53,10 @@ $linecolors=array(
 $ccount = count($linecolors);
 $em=1;
 $t = 0;
+$area=0;
+# temporal solution..
+$tavgwidth=100;
+
 foreach ($tables as $table => $table_status) {
 	$f = 0;
 	foreach (fields($table) as $name => $field) {
@@ -67,6 +70,8 @@ foreach ($tables as $table => $table_status) {
 		$tables[$table]['pos'][0]=$table_pos[$table][0];
 		$tables[$table]['pos'][1]=$table_pos[$table][1];
 	}
+	$area+=$tavgwidth*$lineheight*(1+$f);
+	#echo $area.'<br>';
 	$t++;
 }
 
@@ -88,6 +93,51 @@ if (isset($_POST['layout'])){
 	}
 } else{
 	$layout='name';
+}
+
+
+/* depends on
+	- area of tables
+	- layout packing algorithm
+	- how many connections so there is more space when there arre connection, unconnected tables nedd less space between.
+	- an maybe existing stored (cookie) coord layout if exists and bigger than calculated
+*/
+
+if($layout=='name'){
+	$viewportwidth=sqrt($area*4);
+} else {
+	$viewportwidth=sqrt($area*3);
+}
+$viewportwidth=$viewportwidth*1.3333; # a more landscape view instead quadratic
+
+$legend= isset($_POST['legend']) ? true : false;
+$miniinfo= isset($_POST['miniinfo']) ? true : false;
+$minimap= isset($_POST['minimap']) ? true : false;
+/* TODO: need info if minimap checkbox unset due not send or user set explicit off -> 2 radio boxes with values 0 and 1? */
+if ($viewportwidth>1000) {
+	$minimap=true;
+}
+if(isset($_POST['showfields'])){
+	switch($_POST['showfields']){
+		case 'nofields': $showfields='nofields'; break;
+		case 'pkfields': $showfields='pkfields'; break;
+		case 'pkfkfields': $showfields='pkfkfields'; break;
+		case 'indexfields':$showfields='indexfields'; break;
+		case 'allfields': $showfields='allfields'; break;
+		default: $showfields='allfields';
+	}
+} else {
+	$showfields='allfields';
+}
+
+if(isset($_POST['showtables'])){
+	switch($_POST['showtables']){
+		case 'connected': $showtables='connected'; break;
+		case 'connected': $showtables='all'; break;
+		default: $showtables='all';
+	}
+} else {
+	$showtables='all';
 }
 
 #echo '<pre>';print_r($tables);die();
@@ -155,41 +205,47 @@ foreach ($tables as $table => $table_status) {
 }
 
 #echo '<pre>'; print_r($referenced);die();
-$schemawidth=$viewportwidth;
-$schemaheight=$top + $maxheight;
+$schemawidth= $viewportwidth;
+$schemaheight= $top + $maxheight;
 
 #echo '<pre>';print_r($debugfk);die();
 #echo '<pre>';print_r($schema);die();
 
+if (isset($_POST['lines']) && $_POST['lines']=='snake') {
+	$lines='snake';
+} else {
+	$lines='';
+}
 ?>
 <form action="" method="post" id="layoutform">
 <fieldset>
 <legend>layout</legend>
 <?php /* maybe replace with a select if there are too many possibilities. */ ?>
-<button <?= $layout == 'name' ? 'disabled="disabled" ':'' ?>name="layout" value="name">table name</button>
-<button <?= $layout == 'fieldcount' ? 'disabled="disabled" ':'' ?>name="layout" value="fieldcount">fieldcount</button>
-<button <?= $layout == 'fieldcount_desc' ? 'disabled="disabled" ':'' ?>name="layout" value="fieldcount_desc">fieldcount desc</button>
+<button <?= $layout == 'name' ? 'class="isactive" ':'' ?>name="layout" value="name">table name</button>
+<button <?= $layout == 'fieldcount' ? 'class="isactive" ':'' ?>name="layout" value="fieldcount">fieldcount</button>
+<button <?= $layout == 'fieldcount_desc' ? 'class="isactive" ':'' ?>name="layout" value="fieldcount_desc">fieldcount desc</button>
 <br>
-<button <?= $layout == 'cookie' ? 'disabled="disabled" ':'' ?>name="layout" value="cookie" title="read positions from adminer_schema cookie">cookie coords</button>
+<button <?= $layout == 'cookie' ? 'class="isactive" ':'' ?>name="layout" value="cookie" title="read positions from adminer_schema cookie">cookie coords</button>
 <?php 
 # TODO: Test if connection is mysql/mariadb and phpmyadmin's pma__ tables exists and accessible by current user
 if(true): ?>
-<button <?= $layout == 'pma' ? 'disabled="disabled" ':'' ?>name="layout" value="pma" title="read positions from phpmyadmin designer pma__ tables">pma coords (TODO)</button>
+<button <?= $layout == 'pma' ? 'class="isactive" ':'' ?>name="layout" value="pma" title="read positions from phpmyadmin designer pma__ tables">pma coords (TODO)</button>
 <?php endif; ?>
-<button <?= $layout == 'spring' ? 'disabled="disabled" ':'' ?>name="layout" value="spring">spring (TODO)</button>
-<br/><select name="lines">
-<option value="">tablecolors</option>
-<option value="snake">constraintcolors</option>
+<button <?= $layout == 'spring' ? 'class="isactive" ':'' ?>name="layout" value="spring">spring (TODO)</button>
+<br/>
+<select name="lines">
+<option value="table">tablecolors</option>
+<option value="snake"<?= ($lines=='snake') ? ' selected="selected"':''; ?>>constraintcolors</option>
 </select>
 </fieldset>
 </form>
-<input name="showfields" type="radio" id="s_shownofields"/>
-<input name="showfields" type="radio" id="s_showpkfields"/>
-<input name="showfields" type="radio" id="s_showpkfkfields"/>
-<input name="showfields" type="radio" id="s_showindexfields"/>
-<input name="showfields" type="radio" id="s_showallfields"/>
-<input name="showtables" type="radio" id="s_showalltables"/>
-<input name="showtables" type="radio" id="s_showconntables"/>
+<input name="showfields" value="nofields" form="layoutform" type="radio" id="s_shownofields"<?= $showfields=='nofields' ? ' checked="checked"' : '' ?>/>
+<input name="showfields" value="pkfields" form="layoutform" type="radio" id="s_showpkfields"<?= $showfields=='pkfields' ? ' checked="checked"' : '' ?>/>
+<input name="showfields" value="pkfkfields" form="layoutform" type="radio" id="s_showpkfkfields"<?= $showfields=='pkfkfields' ? ' checked="checked"' : '' ?>/>
+<input name="showfields" value="indexfields" form="layoutform" type="radio" id="s_showindexfields"<?= $showfields=='indexfields' ? ' checked="checked"' : '' ?>/>
+<input name="showfields" value="allfields" form="layoutform" type="radio" id="s_showallfields"<?= $showfields=='allfields' ? ' checked="checked"' : '' ?>/>
+<input name="showtables" value="all" form="layoutform" type="radio" id="s_showalltables"<?= $showtables=='all' ? ' checked="checked"' : '' ?>/>
+<input name="showtables" value="connected" form="layoutform" type="radio" id="s_showconntables"<?= $showtables=='connected' ? ' checked="checked"' : '' ?>/>
 <fieldset id="showfieldsgroup">
 <legend>field filter</legend>
 <label class="radiogroup" id="shownofieldslabel" for="s_shownofields">no</label>
@@ -204,9 +260,13 @@ if(true): ?>
 <label class="radiogroup" id="showconntableslabel" for="s_showconntables">connected (TODO)</label>
 </fieldset>
 <br/>
-<input type="checkbox" id="s_minimap" checked="checked"/><label for="s_minimap" title="-moz-element() works currently(2019) only in Firefox" id="showminimaplabel">minimap</label>
-<input type="checkbox" id="s_miniinfo"/><label for="s_miniinfo" id="showminiinfolabel">info</label>
-<input type="checkbox" id="s_legend"/><label for="s_legend" id="showlegendlabel">legend</label>
+<input type="checkbox" form="layoutform" name="minimap" id="s_minimap"<?= $minimap ? ' checked="checked"':'' ?>/><label for="s_minimap" title="-moz-element() works currently(2019) only in Firefox" id="showminimaplabel">minimap</label>
+<input type="checkbox" form="layoutform" name="miniinfo" id="s_miniinfo"<?= $miniinfo ? ' checked="checked"':'' ?>/><label for="s_miniinfo" id="showminiinfolabel">info</label>
+<input type="checkbox" form="layoutform" name="legend" id="s_legend"<?= $legend ? ' checked="checked"':'' ?>/><label for="s_legend" id="showlegendlabel">legend</label>
+<label style="display:inline-block;background:#ddd;border-radius:4px;">
+<input id="schemazoom" form="layoutform" name="zoom" type="range" value="<?= (isset($_POST['zoom']) && $_POST['zoom']<=1.5 && $_POST['zoom']>=0.1) ? (float) $_POST['zoom']:'1' ?>" min="0.1" max="1.5" step="0.1"/>
+<span id="schemazoomvalue"></span>
+</label>
 <div id="legend" style="position:fixed;background:#eee;box-shadow:0 0 20px 0 #000;max-width:620px;left:auto;margin-left:auto;margin-right:auto;z-index:100;">
 	<div style="display:inline-block;vertical-align:top;width:300px;">
 	<div style="text-align:center">ON DELETE</div>
@@ -239,7 +299,7 @@ if(true): ?>
 </div>
 <style>
 form#layoutform button {cursor:pointer;padding:0 6px;}
-form#layoutform button:disabled {
+form#layoutform button.isactive {
 	color:#fff;
 	border-width:1px;
 	border-radius:4px;
@@ -252,15 +312,25 @@ form#layoutform button:disabled {
 #content{width:max-content;}
 #layoutform{display:inline-block;}
 #schema{
+<?php 
+	if(isset($_POST['zoom']) && $_POST['zoom']<=1.5 && $_POST['zoom']>=0.1){
+		$zoom=(float)$_POST['zoom'];
+		echo 'transform: scale('.$zoom.');'."\n";
+		echo 'margin-bottom:'.( -(1 - $zoom) * $schemaheight).'px;'."\n";
+	}
+?>
 	/* for debugging */
-	border: 1px solid #600;
-	background:#fef;
+	/*border: 1px solid #600;*/
+	/*background:#fef;*/
+	box-sizing:border-box;
 
 	margin-left:0;
-	height:<?= $schemaheight ?>px;width:<?= $schemawidth ?>px;
+	height:<?= ($schemaheight+2) ?>px;width:<?= $schemawidth ?>px;
 	font-size:10px;
 	transform-origin:top left;
 }
+#schema div a{ font-size:10px; line-height:10px; }
+#schema div{ font-size:10px; line-height:10px; }
 #schema svg {position:absolute;}
 
 #legend{
@@ -268,6 +338,7 @@ form#layoutform button:disabled {
 	background:#eee;
 	box-shadow:0 0 20px 0 #000;
 	left:auto;
+	bottom:80px;
 	margin-left:auto;
 	margin-right:auto;
 	z-index:10;
@@ -275,7 +346,7 @@ form#layoutform button:disabled {
 #legend div span{width:100px;display:inline-block;text-align:right;}
 
 svg line, svg path {fill:none; stroke:#000;}
-<?php if (isset($_POST['lines']) && $_POST['lines']=='snake') : ?>
+<?php if ($lines=='snake') : ?>
 /*
 update/delete rules for the alternating line color, pkcolor as thick light
 
@@ -326,8 +397,8 @@ svg.u_unknown line.upd, svg.u_restrict path.upd  {stroke-width:6;stroke-opacity:
 	box-sizing:border-box;
 }
 .table div {background-color:#ccc;}
-.table a {color:#009;font-weight:bold;}
-.table span{display:block;line-height:<?= $lineheight ?>px; background:rgba(220,220,220,0.95);padding-left:2px;padding-right:2px;}
+.table a {color:#009;font-weight:bold;padding-left:1px;}
+.table span{display:block;line-height:<?= $lineheight ?>px; background:rgba(220,220,220,0.95);padding-left:1px;padding-right:1px;}
 .table span.pk {background-color:#ff6;}
 .table span.pk.fk {background-color:#ff6;
 	/* the color stripes idea reduces readability of field name */
@@ -372,6 +443,7 @@ fieldset legend{
 #s_shownofields:checked ~ fieldset #shownofieldslabel,
 #s_showpkfields:checked ~ fieldset #showpkfieldslabel,
 #s_showpkfkfields:checked ~ fieldset #showpkfkfieldslabel,
+#s_showindexfields:checked ~ fieldset #showindexfieldslabel,
 #s_showallfields:checked ~ fieldset #showallfieldslabel,
 #s_minimap:checked ~ #showminimaplabel,
 #s_miniinfo:checked ~ #showminiinfolabel,
@@ -512,9 +584,9 @@ function setzoom(){
 	console.log(zoom);
 	document.getElementById('schema').style['transform']='scale('+zoom+')';
 	// a trick to adjust the height of #schema element for browser window layout
-	if(schemazoom.value<1){
+	//if(schemazoom.value<1){
 		document.getElementById('schema').style['margin-bottom']= - (1-schemazoom.value) * document.getElementById('schema').offsetHeight + 'px';
-	}
+	//}
 	// sometimes firefox calculated ugly 110.000000001%, so lets round it..
 	document.getElementById('schemazoomvalue').innerHTML = Math.round(zoom*100) +'%';
 }
@@ -605,10 +677,6 @@ function updateMinimap(event) {
 	}
 }
 </script>
-<label style="display:inline-block;background:#ddd;border-radius:4px;">
-<input id="schemazoom" type="range" value='1' min="0.1" max="1.5" step="0.1"/>
-<span id="schemazoomvalue"></span>
-</label>
 <div id="schema">
 <?php
 
@@ -668,11 +736,21 @@ foreach ($schema as $name => $table) {
 				$min_y = min($y1, $y2);
 				$max_y = max($y1, $y2)+$lineheight;
 				$h = abs($y1-$y2)+$lineheight;
+				$vertcurve=0;
 				if ($dx < 6){
-					$dx = 10;
+					if ($x1>$min_x) {
+						$sx1=$x1-$min_x;
+						$sx2 = 0;
+					} elseif ($x2>$min_x) {
+						$sx1 = 0;
+						$sx2=$x2-$min_x;
+					} else {
+						$sx1 = 0;
+						$sx2 = 0;
+					}
 					$min_x = $min_x-10;
-					$sx1 = 0;
-					$sx2 = 0;
+					$vertcurve=1;
+					$dx=10+$dx;
 				} elseif ($x1>$x2){
 					if ($x1 > $x2+$w2 ){
 						$dx=$x1-$x2-$w2;
@@ -708,10 +786,14 @@ foreach ($schema as $name => $table) {
 					$sy2 = $h-$lineyoffset;
 				}
 			echo '<svg class="'.$cdel.' '.$cupd.'" id="ref-'.$name.'.'.$ref.':'.$pktable.'.'.$pkfield.'" height="'.$h.'" width="'.$dx.'" style="top:'.$min_y.'px; left:'.$min_x.'px">';
-			if($sx1==$sx2){
-				echo '<path class="upd" d="M10,0 c-10,0 -10,'.$h.' 0,'.$h.'"'.($pktablecolor ? ' style="stroke:'.$pktablecolor :'').'"/>';
-				echo '<path class="del" d="M10,0 c-10,0 -10,'.$h.' 0,'.$h.'"'.($pktablecolor ? ' style="stroke:'.$pktablecolor :'').'"/>';
+			if($vertcurve){
+				# TODO: start/end docking points (horizontal line a few (4 maybe) pixel long)
+				# TODO: pk/fk arrows/dots in correct direction
+				echo '<path class="upd" d="M'.$dx.','.$lineyoffset.' c-'.$dx.',0 -'.$dx.','.($h-$lineyoffset).' 0,'.($h-2*$lineyoffset).'"'.($pktablecolor ? ' style="stroke:'.$pktablecolor :'').'"/>';
+				echo '<path class="del" d="M'.$dx.','.$lineyoffset.' c-'.$dx.',0 -'.$dx.','.($h-$lineyoffset).' 0,'.($h-2*$lineyoffset).'"'.($pktablecolor ? ' style="stroke:'.$pktablecolor :'').'"/>';
 			} else {
+				# TODO: start/end docking points (horizontal line a few (4 maybe) pixel long)
+				# TODO: pk/fk arrows/dots in correct direction
 				echo '<line class="upd" x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'"'.($pktablecolor ? ' style="stroke:'.$pktablecolor :'').'"/>';
 				echo '<line class="del" x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'"'.($pktablecolor ? ' style="stroke:'.$pktablecolor :'').'"/>';
 			}

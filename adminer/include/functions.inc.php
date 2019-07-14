@@ -381,12 +381,15 @@ function q($string) {
 function get_vals($query, $column = 0) {
 	global $connection;
 	$return = array();
+	$start=microtime(true);
 	$result = $connection->query($query);
 	if (is_object($result)) {
 		while ($row = $result->fetch_row()) {
 			$return[] = $row[$column];
 		}
 	}
+	$end=microtime(true);
+	$GLOBALS['querylog'][]=array($query,$start,$end);
 	return $return;
 }
 
@@ -425,6 +428,7 @@ function get_rows($query, $connection2 = null, $error = "<p class='error'>") {
 	global $connection;
 	$conn = (is_object($connection2) ? $connection2 : $connection);
 	$return = array();
+	$start=microtime(true);
 	$result = $conn->query($query);
 	if (is_object($result)) { // can return true
 		while ($row = $result->fetch_assoc()) {
@@ -433,6 +437,8 @@ function get_rows($query, $connection2 = null, $error = "<p class='error'>") {
 	} elseif (!$result && !is_object($connection2) && $error && defined("PAGE_HEADER")) {
 		echo $error . error() . "\n";
 	}
+	$end=microtime(true);
+	$GLOBALS['querylog'][]=	array($query,$start,$end);
 	return $return;
 }
 

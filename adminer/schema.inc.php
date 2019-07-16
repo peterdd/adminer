@@ -140,6 +140,25 @@ if(isset($_POST['showtables'])){
 	$showtables='all';
 }
 
+
+$showrefpkt=true;
+$showrefdelete=true;
+$showrefupdate=true;
+/* always true until a solution to receive explicite false/0 set
+* current solution with simple checkboxes cannot distinguish between not set or set to false
+*/
+/*
+if(isset($_POST['showrefpkt'])){
+	$showrefpkt=true;
+}
+if(isset($_POST['showrefdelete'])){
+	$showrefdelete=true;
+}
+if(isset($_POST['showrefupdate'])){
+	$showrefupdate=true;
+}
+*/
+
 #echo '<pre>';print_r($tables);die();
 $monowidth = 6;
 foreach ($tables as $table => $table_status) {
@@ -232,11 +251,6 @@ if(true): ?>
 <button <?= $layout == 'pma' ? 'class="isactive" ':'' ?>name="layout" value="pma" title="read positions from phpmyadmin designer pma__ tables">pma coords (TODO)</button>
 <?php endif; ?>
 <button <?= $layout == 'spring' ? 'class="isactive" ':'' ?>name="layout" value="spring">spring (TODO)</button>
-<br/>
-<select name="lines">
-<option value="table">tablecolors</option>
-<option value="snake"<?= ($lines=='snake') ? ' selected="selected"':''; ?>>constraintcolors</option>
-</select>
 </fieldset>
 </form>
 <input name="showfields" value="nofields" form="layoutform" type="radio" id="s_shownofields"<?= $showfields=='nofields' ? ' checked="checked"' : '' ?>/>
@@ -244,8 +258,18 @@ if(true): ?>
 <input name="showfields" value="pkfkfields" form="layoutform" type="radio" id="s_showpkfkfields"<?= $showfields=='pkfkfields' ? ' checked="checked"' : '' ?>/>
 <input name="showfields" value="indexfields" form="layoutform" type="radio" id="s_showindexfields"<?= $showfields=='indexfields' ? ' checked="checked"' : '' ?>/>
 <input name="showfields" value="allfields" form="layoutform" type="radio" id="s_showallfields"<?= $showfields=='allfields' ? ' checked="checked"' : '' ?>/>
+
 <input name="showtables" value="all" form="layoutform" type="radio" id="s_showalltables"<?= $showtables=='all' ? ' checked="checked"' : '' ?>/>
 <input name="showtables" value="connected" form="layoutform" type="radio" id="s_showconntables"<?= $showtables=='connected' ? ' checked="checked"' : '' ?>/>
+
+<input name="showrefpkt" form="layoutform" type="checkbox" id="s_showrefpkt"<?= $showrefpkt ? ' checked="checked"' : '' ?>/>
+<input name="showrefdelete" form="layoutform" type="checkbox" id="s_showrefdelete"<?= $showrefdelete ? ' checked="checked"' : '' ?>/>
+<input name="showrefupdate" form="layoutform" type="checkbox" id="s_showrefupdate"<?= $showrefupdate ? ' checked="checked"' : '' ?>/>
+
+<input type="checkbox" form="layoutform" name="minimap" id="s_minimap"<?= $minimap ? ' checked="checked"':'' ?>/>
+<input type="checkbox" form="layoutform" name="miniinfo" id="s_miniinfo"<?= $miniinfo ? ' checked="checked"':'' ?>/>
+<input type="checkbox" form="layoutform" name="legend" id="s_legend"<?= $legend ? ' checked="checked"':'' ?>/>
+
 <fieldset id="showfieldsgroup">
 <legend>field filter</legend>
 <label class="radiogroup" id="shownofieldslabel" for="s_shownofields">no</label>
@@ -254,15 +278,35 @@ if(true): ?>
 <label class="radiogroup" id="showindexfieldslabel" for="s_showindexfields">index (TODO)</label>
 <label class="radiogroup" id="showallfieldslabel" for="s_showallfields">all</label>
 </fieldset>
+
 <fieldset id="showtablesgroup">
 <legend>table filter</legend>
 <label class="radiogroup" id="showalltableslabel" for="s_showalltables">all</label>
 <label class="radiogroup" id="showconntableslabel" for="s_showconntables">connected (TODO)</label>
 </fieldset>
+
+<fieldset id="referencesgroup">
+<legend>references</legend>
+<select name="lines" form="layoutform">
+<option value="table">pk table color</option>
+<option value="snake"<?= ($lines=='snake') ? ' selected="selected"':''; ?>>constraintcolors</option>
+</select><button form="layoutform">ok</button>
 <br/>
-<input type="checkbox" form="layoutform" name="minimap" id="s_minimap"<?= $minimap ? ' checked="checked"':'' ?>/><label for="s_minimap" title="-moz-element() works currently(2019) only in Firefox" id="showminimaplabel">minimap</label>
-<input type="checkbox" form="layoutform" name="miniinfo" id="s_miniinfo"<?= $miniinfo ? ' checked="checked"':'' ?>/><label for="s_miniinfo" id="showminiinfolabel">info</label>
-<input type="checkbox" form="layoutform" name="legend" id="s_legend"<?= $legend ? ' checked="checked"':'' ?>/><label for="s_legend" id="showlegendlabel">legend</label>
+<?php
+# only show label for the constraintscolor line style mode
+if($lines=='snake'): ?>
+<label class="checkboxgroup" id="showrefpktlabel" for="s_showrefpkt">pk table color</label>
+<?php endif; ?>
+<label class="checkboxgroup" id="showrefdeletelabel" for="s_showrefdelete">delete constraint</label>
+<label class="checkboxgroup" id="showrefupdatelabel" for="s_showrefupdate">update constraint</label>
+</fieldset>
+
+<div id="widgettoggles">
+<label for="s_minimap" title="-moz-element() works currently(2019) only in Firefox" id="showminimaplabel">minimap</label>
+<label for="s_miniinfo" id="showminiinfolabel">info</label>
+<label for="s_legend" id="showlegendlabel">legend</label>
+</div>
+
 <label style="display:inline-block;background:#ddd;border-radius:4px;">
 <input id="schemazoom" form="layoutform" name="zoom" type="range" value="<?= (isset($_POST['zoom']) && $_POST['zoom']<=1.5 && $_POST['zoom']>=0.1) ? (float) $_POST['zoom']:'1' ?>" min="0.1" max="1.5" step="0.1"/>
 <span id="schemazoomvalue"></span>
@@ -309,7 +353,9 @@ form#layoutform button.isactive {
 	border-top-color:#363;
 	border-left-color:#363;
 }
+/*
 #content{width:max-content;}
+*/
 #layoutform{display:inline-block;}
 #schema{
 <?php 
@@ -320,7 +366,7 @@ form#layoutform button.isactive {
 	}
 ?>
 	/* for debugging */
-	/*border: 1px solid #600;*/
+	border: 1px solid #600;
 	/*background:#fef;*/
 	box-sizing:border-box;
 
@@ -356,6 +402,7 @@ pkcolor:lightgreenlightgreenlightgreenlightegreen...
 */
 
 svg line, svg path {stroke-width:2px;}
+svg line.pkt, svg path.pkt { stroke-width:5; stroke-opacity:0.4; stroke-linecap:round;}
 svg line.del, svg path.del { stroke-dasharray: 8 6; stroke-dashoffset: 0;}
 svg line.upd, svg path.upd { stroke-dasharray: 4 10; stroke-dashoffset: 5;}
 svg.d_cascade .del, svg.u_cascade .upd {stroke:#c00;}
@@ -406,16 +453,32 @@ svg.u_unknown line.upd, svg.u_restrict path.upd  {stroke-width:6;stroke-opacity:
 	/*background-image:linear-gradient(#fff, #fff 5%, #fc0 5%, #cff 50%, #fc0 95%, #fff 95%, #fff 100%);*/
 	background-image:linear-gradient(to right, #ff6, #cff);
 }
-.table span.fk {background-color:#cff;}
-input[name=showfields]{display:none;}
-input[name=showtables]{display:none;}
-#s_shownofields:checked ~ #schema .table span{display:none; }
-#s_showpkfields:checked ~ #schema .table span {display:none; }
-#s_showpkfields:checked ~ #schema .table span.pk {display:block; }
-#s_showpkfkfields:checked ~ #schema .table span {visibility:hidden; /* temp hack so svg lines still align to pk fk field */}
-#s_showpkfkfields:checked ~ #schema .table span.pk {display:block;visibility:visible;/* temp hack */ }
-#s_showpkfkfields:checked ~ #schema .table span.fk {display:block;visibility:visible;/* temp hack */ }
-label.radiogroup {
+.table span.fk { background-color:#cff; }
+input[name=showfields] { display:none; }
+input[name=showtables] { display:none; }
+#s_shownofields:checked ~ #schema .table span { display:none; }
+#s_showpkfields:checked ~ #schema .table span { display:none; }
+#s_showpkfields:checked ~ #schema .table span.pk { display:block; }
+#s_showpkfkfields:checked ~ #schema .table span { visibility:hidden; /* temp hack so svg lines still align to pk fk field */ }
+#s_showpkfkfields:checked ~ #schema .table span.pk { display:block;visibility:visible;/* temp hack */ }
+#s_showpkfkfields:checked ~ #schema .table span.fk { display:block;visibility:visible;/* temp hack */ }
+
+input[name=showrefpkt],
+input[name=showrefdelete],
+input[name=showrefupdate] {
+	display:none;
+}
+
+#schema svg line.pkt, #schema svg path.pkt,
+#schema svg line.del, #schema svg path.del,
+#schema svg line.upd, #schema svg path.upd {
+	display:none;
+}
+#s_showrefpkt:checked    ~ #schema svg line.pkt, #s_showrefpkt:checked    ~ #schema svg path.pkt { display:block; }
+#s_showrefdelete:checked ~ #schema svg line.del, #s_showrefdelete:checked ~ #schema svg path.del { display:block; }
+#s_showrefupdate:checked ~ #schema svg line.upd, #s_showrefupdate:checked ~ #schema svg path.upd { display:block; }
+
+label.radiogroup, label.checkboxgroup {
 	cursor:pointer;
 	display:inline-block;
 	background:#eee;
@@ -424,6 +487,11 @@ label.radiogroup {
 	border-radius:4px;
 }
 h2{margin-bottom:0;}
+div#widgettoggles{
+	display:inline-block;
+	max-width:150px;
+	vertical-align:top;
+}
 fieldset, fieldset#showtablesgroup, fieldset#showfieldsgroup {
 	background:#ddd;
 	border-radius:4px;
@@ -445,9 +513,12 @@ fieldset legend{
 #s_showpkfkfields:checked ~ fieldset #showpkfkfieldslabel,
 #s_showindexfields:checked ~ fieldset #showindexfieldslabel,
 #s_showallfields:checked ~ fieldset #showallfieldslabel,
-#s_minimap:checked ~ #showminimaplabel,
-#s_miniinfo:checked ~ #showminiinfolabel,
-#s_legend:checked ~ #showlegendlabel {
+#s_showrefpkt:checked ~ fieldset #showrefpktlabel,
+#s_showrefdelete:checked ~ fieldset #showrefdeletelabel,
+#s_showrefupdate:checked ~ fieldset #showrefupdatelabel,
+#s_minimap:checked ~ div #showminimaplabel,
+#s_miniinfo:checked ~ div #showminiinfolabel,
+#s_legend:checked ~ div #showlegendlabel {
 	background-color:#696;
 	color:#fff;
 	border-bottom-color:#9b9;
@@ -491,9 +562,9 @@ input[type=checkbox]{margin-right:0;cursor:pointer;border:4px solid #999;}
 	cursor:pointer;
 	background:#ddd;
 	padding:0 10px;
-	margin-left:0;
+	margin:4px 0;
 	border-radius:3px;
-	display:inline-block;
+	display:block;
 }
 #hideminimaplabel, #hideminiinfolabel, #hidelegendlabel {
 	cursor:pointer;
@@ -713,11 +784,7 @@ foreach ($schema as $name => $table) {
 				$schema[$name]['fields'][$ref]['fk']=1;
 				$pktable=$refs['table'];
 				# TODO calculate proper color value of referenced table
-				if(isset($_POST['lines']) && $_POST['lines']=='snake'){
-					$pktablecolor=false;
-				}else{
-					$pktablecolor=$linecolors[$schema[$pktable]['refcolor']];
-				}
+				$pktablecolor=$linecolors[$schema[$pktable]['refcolor']];
 				$pkfield=$refs['target'][$j];
 				#echo '<pre>';print_r($schema[$pktable]);die();
  				#echo '<pre>';print_r($fkfield);die();
@@ -789,13 +856,19 @@ foreach ($schema as $name => $table) {
 			if($vertcurve){
 				# TODO: start/end docking points (horizontal line a few (4 maybe) pixel long)
 				# TODO: pk/fk arrows/dots in correct direction
-				echo '<path class="upd" d="M'.$dx.','.$lineyoffset.' c-'.$dx.',0 -'.$dx.','.($h-$lineyoffset).' 0,'.($h-2*$lineyoffset).'"'.($pktablecolor ? ' style="stroke:'.$pktablecolor :'').'"/>';
-				echo '<path class="del" d="M'.$dx.','.$lineyoffset.' c-'.$dx.',0 -'.$dx.','.($h-$lineyoffset).' 0,'.($h-2*$lineyoffset).'"'.($pktablecolor ? ' style="stroke:'.$pktablecolor :'').'"/>';
+				if ($lines=='snake'){
+					echo '<path class="pkt" d="M'.$dx.','.$lineyoffset.' c-'.$dx.',0 -'.$dx.','.($h-$lineyoffset).' 0,'.($h-2*$lineyoffset).'" style="stroke:'.$pktablecolor.'"/>';
+				}
+				echo '<path class="upd" d="M'.$dx.','.$lineyoffset.' c-'.$dx.',0 -'.$dx.','.($h-$lineyoffset).' 0,'.($h-2*$lineyoffset).'"'.($lines!='snake' ? ' style="stroke:'.$pktablecolor :'').'"/>';
+				echo '<path class="del" d="M'.$dx.','.$lineyoffset.' c-'.$dx.',0 -'.$dx.','.($h-$lineyoffset).' 0,'.($h-2*$lineyoffset).'"'.($lines!='snake' ? ' style="stroke:'.$pktablecolor :'').'"/>';
 			} else {
 				# TODO: start/end docking points (horizontal line a few (4 maybe) pixel long)
 				# TODO: pk/fk arrows/dots in correct direction
-				echo '<line class="upd" x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'"'.($pktablecolor ? ' style="stroke:'.$pktablecolor :'').'"/>';
-				echo '<line class="del" x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'"'.($pktablecolor ? ' style="stroke:'.$pktablecolor :'').'"/>';
+				if ($lines=='snake'){
+					echo '<line class="pkt" x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'" style="stroke:'.$pktablecolor.'"/>';
+				}
+				echo '<line class="upd" x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'"'.($lines!='snake' ? ' style="stroke:'.$pktablecolor :'').'"/>';
+				echo '<line class="del" x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'"'.($lines!='snake' ? ' style="stroke:'.$pktablecolor :'').'"/>';
 			}
 			echo '</svg>';
 

@@ -197,7 +197,7 @@ function optionlist($options, $selected = null, $use_keys = false) {
 			$opts = $v;
 		}
 		foreach ($opts as $key => $val) {
-			$return .= '<option' . ($use_keys || is_string($key) ? ' value="' . h($key) . '"' : '') . (($use_keys || is_string($key) ? (string) $key : $val) === $selected ? ' selected' : '') . '>' . h($val);
+			$return .= '<option' . ($use_keys || is_string($key) ? ' value="' . h($key) . '"' : '') . (($use_keys || is_string($key) ? (string) $key : $val) === $selected ? ' selected' : '') . '>' . h($val)."</option>\n";
 		}
 		if (is_array($v)) {
 			$return .= '</optgroup>';
@@ -218,7 +218,7 @@ function html_select($name, $options, $value = "", $onchange = true, $labelled_b
 	if ($onchange) {
 		return "<select name='" . h($name) . "'"
 			. ($labelled_by ? " aria-labelledby='$labelled_by'" : "")
-			. ">" . optionlist($options, $value) . "</select>"
+			. ">\n" . optionlist($options, $value) . "</select>"
 			. (is_string($onchange) ? script("qsl('select').onchange = function () { $onchange };", "") : "")
 		;
 	}
@@ -405,6 +405,7 @@ function get_key_vals($query, $connection2 = null, $set_keys = true) {
 		$connection2 = $connection;
 	}
 	$return = array();
+	$start=microtime(true);
 	$result = $connection2->query($query);
 	if (is_object($result)) {
 		while ($row = $result->fetch_row()) {
@@ -415,6 +416,8 @@ function get_key_vals($query, $connection2 = null, $set_keys = true) {
 			}
 		}
 	}
+	$end=microtime(true);
+	$GLOBALS['querylog'][]=array($query,$start,$end);
 	return $return;
 }
 

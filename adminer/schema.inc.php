@@ -3,6 +3,8 @@
 * rewrite of schema visualisation by https://github.com/peterdd
 */
 
+$starttimeschema=microtime(true);
+
 page_header(lang('Database schema'), "", array(), h(DB . ($_GET["ns"] ? ".$_GET[ns]" : "")));
 
 # Arial-like free font for calculation string length in pixel
@@ -445,7 +447,12 @@ svg.u_unknown line.upd, svg.u_restrict path.upd  {stroke-width:6;stroke-opacity:
 }
 .table div {background-color:#ccc;}
 .table a {color:#009;font-weight:bold;padding-left:1px;}
-.table span{display:block;line-height:<?= $lineheight ?>px; background:rgba(220,220,220,0.95);padding-left:1px;padding-right:1px;}
+.table span{display:block;line-height:<?= $lineheight ?>px;
+	/* maybe a bit faster without opacity in web browsers with many svg lines. Na, thats not the bottleneck .. */
+	/*background:#eee;*/
+	background:rgba(220,220,220,0.95);
+	padding-left:1px;padding-right:1px;
+}
 .table span.pk {background-color:#ff6;}
 .table span.pk.fk {background-color:#ff6;
 	/* the color stripes idea reduces readability of field name */
@@ -903,6 +910,7 @@ foreach ($schema as $name => $table) {
 	echo "</div>";
 }
 
+$endtimeschema=microtime(true);
 ?>
 </div>
 <p class="links"><a href="<?php echo h(ME . "schema=" . urlencode($SCHEMA)); ?>" id="schema-link"><?php echo lang('Permanent link'); ?></a></p>
@@ -918,6 +926,19 @@ foreach ($schema as $name => $table) {
 .vbad{ background-color:rgba(255,0,0,0.5);}
 </style>
 <div id="querylog">
+<pre>At least <?= count($GLOBALS['querylog']) ?> queries to load this page. (not all yet count)</pre>
+<pre><?= count($tables) ?> tables</pre>
+<pre><?= count($referenced) ?> referenced pk tables</pre>
+<?php
+$refcount=0;
+foreach ($referenced as $t) {
+  foreach ($t as $f) {
+    $refcount++;
+  }
+}
+?>
+<pre><?= $refcount ?> references</pre>
+<pre><?= round($endtimeschema-$starttimeschema, 6).' s for '.basename(__FILE__) ?></pre>
 <?php
 # $GLOBALS['querylog'] depends on where the queries are catches and logged (get_rows() for instance, but also others.
 foreach ($GLOBALS['querylog'] as $q){
@@ -941,7 +962,10 @@ foreach ($GLOBALS['querylog'] as $q){
 </div>
 <style>
 #s_querylog {display:none;}
-#querylog {display:none;padding:0.5em;position:fixed;bottom:0;margin-left:auto;margin-right:auto;overflow:auto;height:50%;background-color:rgba(200,200,200,0.9);}
+#querylog {display:none;padding:0.5em;position:fixed;bottom:0;margin-left:auto;margin-right:auto;overflow:auto;height:50%;
+	/*background-color:rgba(200,200,200,0.9);*/
+	background-color:#ccc;
+}
 #querylog pre {margin-top:0.2em;}
 #hidequeryloglabel{background:#999;padding:2px;display:none;position:fixed;bottom:0;left:0;border-radius:3px;z-index:10;}
 #showqueryloglabel{background:#999;padding:2px;position:fixed;bottom:0;left:0;border-radius:3px;z-index:10;}

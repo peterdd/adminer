@@ -311,7 +311,20 @@ if (isset($_GET["sqlite"]) || isset($_GET["sqlite2"])) {
 		global $connection;
 		$return = array();
 		$primary = "";
+		
+		# Idea to parse table creation which may also include original sql comments.
+		# see https://stackoverflow.com/questions/7426205/sqlite-adding-comments-to-tables-and-columns
+		# So a comment after a field may describe that field.
+		# TODO: always 1 field = 1 line for the raw '.schema tablename'?
+		# (Attention: Comments are lost when table structure is edited with current adminer!)
+		#$rawsql='.schema '.table($table);
+		#$rawsql='select sql from sqlite_master where type="table" and tbl_name=' . table($table);
+		#print_r($rawsql);die();
+		#$rawcreatetable = get_rows($rawsql);
+		#echo '<pre>'; print_r($rawcreatetable);die();
+
 		foreach (get_rows("PRAGMA table_info(" . table($table) . ")") as $row) {
+			#print_r($row);die();
 			$name = $row["name"];
 			$type = strtolower($row["type"]);
 			$default = $row["dflt_value"];

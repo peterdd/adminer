@@ -189,7 +189,19 @@ function page_footer($missing = "") {
 <?php } ?>
 <div id="menu">
 <?php $adminer->navigation($missing); ?>
-</div>
 <?php
 	echo script("setupSubmitHighlight(document);");
+?>
+<pre><?php
+$timesql=0;
+foreach ($GLOBALS['querylog'] as $q) {
+	$timesql+= ($q[2]-$q[1]);
 }
+echo round($timesql, 6).' s spent on '.count($GLOBALS['querylog']).' SQL queries.';
+?></pre>
+</div>
+</body>
+</html>
+<?php
+} // end page_footer()
+?>

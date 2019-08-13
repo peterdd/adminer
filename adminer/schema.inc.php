@@ -143,23 +143,37 @@ if(isset($_POST['showtables'])){
 }
 
 
-$showrefpkt=true;
-$showrefdelete=true;
-$showrefupdate=true;
-/* always true until a solution to receive explicite false/0 set
-* current solution with simple checkboxes cannot distinguish between not set or set to false
-*/
-/*
+# These have 3-states: unsent, sent 0, sent 1, so we cannot use a simple input[type=checkbox]
+# default values when not sent in request, e.g when opening the schema view first that has only minimal url/params
+$showrefpkt=0;
+$showrefdelete=1;
+$showrefupdate=1;
 if(isset($_POST['showrefpkt'])){
-	$showrefpkt=true;
+	# keep independent from $showrefpkt default value
+	if($_POST['showrefpkt']==1){
+		$showrefpkt=1;
+	} else if ($_POST['showrefpkt']==0){
+		$showrefpkt=0;
+	}
 }
+
 if(isset($_POST['showrefdelete'])){
-	$showrefdelete=true;
+	# keep independent from $showrefdelete default value
+	if($_POST['showrefdelete']==1){
+		$showrefdelete=1;
+	} else if ($_POST['showrefdelete']==0){
+		$showrefdelete=0;
+	}
 }
+
 if(isset($_POST['showrefupdate'])){
-	$showrefupdate=true;
+	# keep independent from $showrefupdate default value
+	if($_POST['showrefupdate']==1){
+		$showrefupdate=1;
+	} else if ($_POST['showrefupdate']==0){
+		$showrefupdate=0;
+	}
 }
-*/
 
 #echo '<pre>';print_r($tables);die();
 $monowidth = 6;
@@ -264,9 +278,12 @@ if(true): ?>
 <input name="showtables" value="all" form="layoutform" type="radio" id="s_showalltables"<?= $showtables=='all' ? ' checked="checked"' : '' ?>/>
 <input name="showtables" value="connected" form="layoutform" type="radio" id="s_showconntables"<?= $showtables=='connected' ? ' checked="checked"' : '' ?>/>
 
-<input name="showrefpkt" form="layoutform" type="checkbox" id="s_showrefpkt"<?= $showrefpkt ? ' checked="checked"' : '' ?>/>
-<input name="showrefdelete" form="layoutform" type="checkbox" id="s_showrefdelete"<?= $showrefdelete ? ' checked="checked"' : '' ?>/>
-<input name="showrefupdate" form="layoutform" type="checkbox" id="s_showrefupdate"<?= $showrefupdate ? ' checked="checked"' : '' ?>/>
+<input name="showrefpkt" form="layoutform" type="radio" value="0" id="s_showrefpkt0"<?= $showrefpkt==0 ? ' checked="checked"' : '' ?>/>
+<input name="showrefpkt" form="layoutform" type="radio" value="1" id="s_showrefpkt1"<?= $showrefpkt==1 ? ' checked="checked"' : '' ?>/>
+<input name="showrefdelete" form="layoutform" type="radio" value="0" id="s_showrefdelete0"<?= $showrefdelete==0 ? ' checked="checked"' : '' ?>/>
+<input name="showrefdelete" form="layoutform" type="radio" value="1" id="s_showrefdelete1"<?= $showrefdelete==1 ? ' checked="checked"' : '' ?>/>
+<input name="showrefupdate" form="layoutform" type="radio" value="0" id="s_showrefupdate0"<?= $showrefupdate==0 ? ' checked="checked"' : '' ?>/>
+<input name="showrefupdate" form="layoutform" type="radio" value="1" id="s_showrefupdate1"<?= $showrefupdate==1 ? ' checked="checked"' : '' ?>/>
 
 <input type="checkbox" form="layoutform" name="minimap" id="s_minimap"<?= $minimap ? ' checked="checked"':'' ?>/>
 <input type="checkbox" form="layoutform" name="miniinfo" id="s_miniinfo"<?= $miniinfo ? ' checked="checked"':'' ?>/>
@@ -297,10 +314,15 @@ if(true): ?>
 <?php
 # only show label for the constraintscolor line style mode
 if($lines=='snake'): ?>
-<label class="checkboxgroup" id="showrefpktlabel" for="s_showrefpkt">pk table color</label>
+<label class="checkboxgroup" id="showrefpkt0label" for="s_showrefpkt0">pk table color</label>
+<label class="checkboxgroup" id="showrefpkt1label" for="s_showrefpkt1">pk table color</label>
 <?php endif; ?>
-<label class="checkboxgroup" id="showrefdeletelabel" for="s_showrefdelete">delete constraint</label>
-<label class="checkboxgroup" id="showrefupdatelabel" for="s_showrefupdate">update constraint</label>
+
+<label class="checkboxgroup" id="showrefdelete0label" for="s_showrefdelete0">ON DELETE</label>
+<label class="checkboxgroup" id="showrefdelete1label" for="s_showrefdelete1">ON DELETE</label>
+
+<label class="checkboxgroup" id="showrefupdate0label" for="s_showrefupdate0">ON UPDATE</label>
+<label class="checkboxgroup" id="showrefupdate1label" for="s_showrefupdate1">ON UPDATE</label>
 </fieldset>
 
 <div id="widgettoggles">
@@ -481,9 +503,9 @@ input[name=showrefupdate] {
 #schema svg line.upd, #schema svg path.upd {
 	display:none;
 }
-#s_showrefpkt:checked    ~ #schema svg line.pkt, #s_showrefpkt:checked    ~ #schema svg path.pkt { display:block; }
-#s_showrefdelete:checked ~ #schema svg line.del, #s_showrefdelete:checked ~ #schema svg path.del { display:block; }
-#s_showrefupdate:checked ~ #schema svg line.upd, #s_showrefupdate:checked ~ #schema svg path.upd { display:block; }
+#s_showrefpkt1:checked    ~ #schema svg line.pkt, #s_showrefpkt1:checked    ~ #schema svg path.pkt { display:block; }
+#s_showrefdelete1:checked ~ #schema svg line.del, #s_showrefdelete1:checked ~ #schema svg path.del { display:block; }
+#s_showrefupdate1:checked ~ #schema svg line.upd, #s_showrefupdate1:checked ~ #schema svg path.upd { display:block; }
 
 label.radiogroup, label.checkboxgroup {
 	cursor:pointer;
@@ -520,9 +542,9 @@ fieldset legend{
 #s_showpkfkfields:checked ~ fieldset #showpkfkfieldslabel,
 #s_showindexfields:checked ~ fieldset #showindexfieldslabel,
 #s_showallfields:checked ~ fieldset #showallfieldslabel,
-#s_showrefpkt:checked ~ fieldset #showrefpktlabel,
-#s_showrefdelete:checked ~ fieldset #showrefdeletelabel,
-#s_showrefupdate:checked ~ fieldset #showrefupdatelabel,
+#s_showrefpkt1:checked ~ fieldset #showrefpkt0label,
+#s_showrefdelete1:checked ~ fieldset #showrefdelete0label,
+#s_showrefupdate1:checked ~ fieldset #showrefupdate0label,
 #s_minimap:checked ~ div #showminimaplabel,
 #s_miniinfo:checked ~ div #showminiinfolabel,
 #s_legend:checked ~ div #showlegendlabel {
@@ -533,6 +555,16 @@ fieldset legend{
 	border-top-color:#363;
 	border-left-color:#363;
 }
+
+#s_showrefpkt0:checked ~ fieldset #showrefpkt0label,
+#s_showrefpkt1:checked ~ fieldset #showrefpkt1label,
+#s_showrefdelete0:checked ~ fieldset #showrefdelete0label,
+#s_showrefdelete1:checked ~ fieldset #showrefdelete1label,
+#s_showrefupdate0:checked ~ fieldset #showrefupdate0label,
+#s_showrefupdate1:checked ~ fieldset #showrefupdate1label {
+	display:none;
+}
+
 #minimap{
 <?php
 	$minimapmax = 40000;
@@ -866,18 +898,18 @@ foreach ($schema as $name => $table) {
 				if ($lines=='snake'){
 					echo '<path class="pkt" d="M'.$dx.','.$lineyoffset.' c-'.$dx.',0 -'.$dx.','.($h-$lineyoffset).' 0,'.($h-2*$lineyoffset).'" style="stroke:'.$pktablecolor.'"/>';
 				}
-				echo '<path class="upd" d="M'.$dx.','.$lineyoffset.' c-'.$dx.',0 -'.$dx.','.($h-$lineyoffset).' 0,'.($h-2*$lineyoffset).'"'.($lines!='snake' ? ' style="stroke:'.$pktablecolor :'').'"/>';
-				echo '<path class="del" d="M'.$dx.','.$lineyoffset.' c-'.$dx.',0 -'.$dx.','.($h-$lineyoffset).' 0,'.($h-2*$lineyoffset).'"'.($lines!='snake' ? ' style="stroke:'.$pktablecolor :'').'"/>';
+				echo '<path class="upd" d="M'.$dx.','.$lineyoffset.' c-'.$dx.',0 -'.$dx.','.($h-$lineyoffset).' 0,'.($h-2*$lineyoffset).'"'.($lines!='snake' ? ' style="stroke:'.$pktablecolor.'"' :'').'/>';
+				echo '<path class="del" d="M'.$dx.','.$lineyoffset.' c-'.$dx.',0 -'.$dx.','.($h-$lineyoffset).' 0,'.($h-2*$lineyoffset).'"'.($lines!='snake' ? ' style="stroke:'.$pktablecolor.'"' :'').'/>';
 			} else {
 				# TODO: start/end docking points (horizontal line a few (4 maybe) pixel long)
 				# TODO: pk/fk arrows/dots in correct direction
 				if ($lines=='snake'){
 					echo '<line class="pkt" x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'" style="stroke:'.$pktablecolor.'"/>';
 				}
-				echo '<line class="upd" x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'"'.($lines!='snake' ? ' style="stroke:'.$pktablecolor :'').'"/>';
-				echo '<line class="del" x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'"'.($lines!='snake' ? ' style="stroke:'.$pktablecolor :'').'"/>';
+				echo '<line class="upd" x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'"'.($lines!='snake' ? ' style="stroke:'.$pktablecolor.'"' :'').'/>';
+				echo '<line class="del" x1="'.$sx1.'" y1="'.$sy1.'" x2="'.$sx2.'" y2="'.$sy2.'"'.($lines!='snake' ? ' style="stroke:'.$pktablecolor.'"' :'').'/>';
 			}
-			echo '</svg>';
+			echo '</svg>'."\n";
 
 			$j++;
 		}
@@ -887,7 +919,7 @@ foreach ($schema as $name => $table) {
 
 foreach ($schema as $name => $table) {
 	# set table width too for exact svg line ends and collapsing columns does not autochange table width
-	echo "<div class='table' id='".h(DB).".".h($name)."' style='left:".$table['pos'][0]."px;top:".$table['pos'][1]."px;width:".$table['w']."px'>";
+	echo "\n<div class='table' id='".h(DB).".".h($name)."' style='left:".$table['pos'][0]."px;top:".$table['pos'][1]."px;width:".$table['w']."px'>";
 	# we might put more info into that first row in future
 	echo '<div>';
 	echo '<a href="' . h(ME) . 'table=' . urlencode($name) . '">' . h($name) . "</a>";
@@ -903,9 +935,10 @@ foreach ($schema as $name => $table) {
 		if($field['fk']==1){
 			$class.=' fk';
 		}
+		$class.=' '.type_class($field["type"]);
 		$class = trim($class);
-		$val = '<span'.($class !='' ? ' class="'.$class.'"':''). type_class($field["type"]) . ' title="' . h($field["full_type"] . ($field["null"] ? " NULL" : '')) . '">' . h($field["field"]) . '</span>';
-		echo $val;
+		$val = '<span'.($class !='' ? ' class="'.$class.'"':''). ' title="' . h($field["full_type"] . ($field["null"] ? " NULL" : '')) . '">' . h($field["field"]) . '</span>';
+		echo $val."\n";
 	}
 	echo "</div>";
 }

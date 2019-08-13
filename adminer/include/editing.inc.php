@@ -241,7 +241,7 @@ function default_value($field) {
 
 /** Get type class to use in CSS
 * @param string
-* @return string class=''
+* @return string
 */
 function type_class($type) {
 	foreach (array(
@@ -251,7 +251,7 @@ function type_class($type) {
 		'enum' => 'set',
 	) as $key => $val) {
 		if (preg_match("~$key|$val~", $type)) {
-			return " class='$key'";
+			return $key;
 		}
 	}
 }

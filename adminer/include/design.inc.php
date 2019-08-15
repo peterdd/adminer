@@ -201,7 +201,7 @@ function page_footer($missing = "") {
 }
 #s_querylog:checked ~ #querylog { display:block; }
 #logsummary { background-color:#ccc;position:fixed;bottom:0;padding:0.5em; }
-#logtoggle, #loghide { padding:0 4px;border:1px solid #999; background-color:#fff;border-radius:3px;white-space:nowrap; }
+#logtoggle, #loghide { padding:0 4px;border:1px solid #999; background-color:#fff;border-radius:3px;white-space:nowrap;cursor:pointer; }
 </style>
 <div id="querylog">
 <label for="s_querylog" id="loghide">Hide</label>

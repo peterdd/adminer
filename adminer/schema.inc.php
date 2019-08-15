@@ -175,6 +175,11 @@ if(isset($_POST['showrefupdate'])){
 	}
 }
 
+$showquerylog=0;
+if(isset($_POST['showquerylog'])){
+        $showquerylog=1;
+} 
+
 #echo '<pre>';print_r($tables);die();
 $monowidth = 6;
 foreach ($tables as $table => $table_status) {
@@ -947,10 +952,25 @@ $endtimeschema=microtime(true);
 ?>
 </div>
 <p class="links"><a href="<?php echo h(ME . "schema=" . urlencode($SCHEMA)); ?>" id="schema-link"><?php echo lang('Permanent link'); ?></a></p>
-<input type="checkbox" id="s_querylog">
+<input type="checkbox" id="s_querylog" name="showquerylog" form="layoutform"<?= $showquerylog ? ' checked="checked"' : '' ?>>
 <label for="s_querylog" id="showqueryloglabel">Show Log</label>
 <label for="s_querylog" id="hidequeryloglabel">Hide Log</label>
 <style>
+#s_querylog {display:none;}
+#querylog {
+	display:none;
+	padding:0.5em;position:fixed;bottom:0;margin-left:auto;margin-right:auto;overflow:auto;height:50%;
+	box-shadow: 0 0 10px #000;
+	/*background-color:rgba(200,200,200,0.9);*/
+	background-color:#ccc;
+}
+#querylog pre {margin-top:0.2em;}
+#hidequeryloglabel{background:#999;padding:2px;display:none;position:fixed;bottom:0;left:0;border-radius:3px;z-index:10;}
+#showqueryloglabel{background:#999;padding:2px;position:fixed;bottom:0;left:0;border-radius:3px;z-index:10;}
+#s_querylog:checked ~ #querylog {display:block;}
+#s_querylog:checked ~ #showqueryloglabel {display:none;}
+#s_querylog:checked ~ #hidequeryloglabel {display:block;}
+
 .v4{ background-color:transparent;}
 .v3{ background-color:rgba(127,255,0,0.1);}
 .v2{ background-color:rgba(255,255,0,0.2);}
@@ -993,16 +1013,3 @@ foreach ($GLOBALS['querylog'] as $q){
 }
 ?>
 </div>
-<style>
-#s_querylog {display:none;}
-#querylog {display:none;padding:0.5em;position:fixed;bottom:0;margin-left:auto;margin-right:auto;overflow:auto;height:50%;
-	/*background-color:rgba(200,200,200,0.9);*/
-	background-color:#ccc;
-}
-#querylog pre {margin-top:0.2em;}
-#hidequeryloglabel{background:#999;padding:2px;display:none;position:fixed;bottom:0;left:0;border-radius:3px;z-index:10;}
-#showqueryloglabel{background:#999;padding:2px;position:fixed;bottom:0;left:0;border-radius:3px;z-index:10;}
-#s_querylog:checked ~ #querylog {display:block;}
-#s_querylog:checked ~ #showqueryloglabel {display:none;}
-#s_querylog:checked ~ #hidequeryloglabel {display:block;}
-</style>

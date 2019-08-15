@@ -192,13 +192,29 @@ function page_footer($missing = "") {
 <?php
 	echo script("setupSubmitHighlight(document);");
 ?>
+</div>
+<input type="checkbox" id="s_querylog" name="querylog">
+<style>
+#querylog {
+	display:none;
+	border-radius:4px;background-color:#ccc;padding:0.5em;position:fixed;bottom:1.5em;
+}
+#s_querylog:checked ~ #querylog { display:block; }
+#logsummary { background-color:#ccc;position:fixed;bottom:0;padding:0.5em; }
+#logtoggle, #loghide { padding:0 4px;border:1px solid #999; background-color:#fff;border-radius:3px;white-space:nowrap; }
+</style>
+<div id="querylog">
+<label for="s_querylog" id="loghide">Hide</label>
 <pre><?php
 $timesql=0;
 foreach ($GLOBALS['querylog'] as $q) {
-	$timesql+= ($q[2]-$q[1]);
+	$qtime = $q[2]-$q[1];
+	echo "\n".round($qtime*1000, 3).' ms : '.htmlspecialchars($q[0]);
+	$timesql += $qtime;
 }
-echo round($timesql, 6).' s spent on '.count($GLOBALS['querylog']).' SQL queries.';
 ?></pre>
+</div>
+<div id="logsummary"><?php echo "\n".round($timesql, 6).' s spent on <label for="s_querylog" id="logtoggle" title="Click to expand. Only queries of page request, not any by XHR requests.">'.count($GLOBALS['querylog']).' SQL queries</label>';?>
 </div>
 </body>
 </html>

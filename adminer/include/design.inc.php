@@ -38,7 +38,8 @@ function page_header($title, $error = "", $breadcrumb = array(), $title2 = "") {
 	display:none;
 	border-radius:4px;
 	background-color:#ccc;
-	padding:0.2em;
+	box-shadow: 0 0 0 4px rgba(127,127,127,0.5);
+	padding:0;
 	position:fixed;
 	bottom:1.5em;
 	max-height:80%;
@@ -52,7 +53,7 @@ function page_header($title, $error = "", $breadcrumb = array(), $title2 = "") {
 #s_querylog {display:none;}
 #s_querylog:checked ~ #querylog, #s_querylog:checked ~ #content #querylog { display:block; }
 #s_querylog:checked ~ #querylogsummary #showqueryloglabel, #s_querylog:checked ~ #content #querylogsummary #showqueryloglabel { background-color:#696;color:#fff; }
-#querylogsummary { background-color:#ccc;position:fixed;bottom:0;padding:0.5em;border-top-right-radius:4px; }
+#querylogsummary { background-color:#ccc;position:fixed;bottom:0;padding:0.2em;border-top-right-radius:4px;box-shadow: 0 0 0 1px #999; }
 #showqueryloglabel, #hidequeryloglabel { cursor:pointer;padding:0 4px; background-color:#fff;border-radius:3px;white-space:nowrap; }
 </style>
 <?php /* form="layoutform" currently used only for schema diagram page keeping s_querylog status between requests. */ ?>

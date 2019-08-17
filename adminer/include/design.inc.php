@@ -218,18 +218,18 @@ function page_footer($missing = "") {
 ?>
 </div>
 <?php
-# schema has its own more detailed #querylog stuff, so skip it for that page type
+$timesql=0;
+$qtimes='';
+foreach ($GLOBALS['querylog'] as $q) {
+	$qtime = $q[2] - $q[1];
+	$qtimes .= "\n".round($qtime*1000,3).' ms : '.htmlspecialchars($q[0]);
+	$timesql += $qtime;
+}
+# schema still has its own more detailed #querylog stuff, so skip it for that page type
 if (!isset($_GET["schema"])): ?>
 <div id="querylog">
 <label for="s_querylog" id="hidequeryloglabel">Hide</label>
-<pre><?php
-$timesql=0;
-foreach ($GLOBALS['querylog'] as $q) {
-	$qtime = $q[2]-$q[1];
-	echo "\n".round($qtime*1000, 3).' ms : '.htmlspecialchars($q[0]);
-	$timesql += $qtime;
-}
-?></pre>
+<pre><?= $qtimes ?></pre>
 </div>
 <?php endif; ?>
 <div id="querylogsummary"><?php echo "\n".round($timesql, 6).' s spent on <label for="s_querylog" id="showqueryloglabel" title="Click to expand. Only queries of page request, not any by XHR requests.">'.count($GLOBALS['querylog']).' SQL queries</label>';?>

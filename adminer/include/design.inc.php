@@ -33,6 +33,30 @@ function page_header($title, $error = "", $breadcrumb = array(), $title2 = "") {
 <?php } ?>
 
 <body class="<?php echo lang('ltr'); ?> nojs">
+<style>
+#querylog {
+	display:none;
+	border-radius:4px;
+	background-color:#ccc;
+	padding:0.2em;
+	position:fixed;
+	bottom:1.5em;
+	max-height:80%;
+	overflow-y:auto;
+}
+#querylog pre{
+	white-space:pre-wrap;
+	padding:0.1em;
+	margin:0;
+}
+#s_querylog {display:none;}
+#s_querylog:checked ~ #querylog, #s_querylog:checked ~ #content #querylog { display:block; }
+#s_querylog:checked ~ #querylogsummary #showqueryloglabel, #s_querylog:checked ~ #content #querylogsummary #showqueryloglabel { background-color:#696;color:#fff; }
+#querylogsummary { background-color:#ccc;position:fixed;bottom:0;padding:0.5em;border-top-right-radius:4px; }
+#showqueryloglabel, #hidequeryloglabel { cursor:pointer;padding:0 4px; background-color:#fff;border-radius:3px;white-space:nowrap; }
+</style>
+<?php /* form="layoutform" currently used only for schema diagram page keeping s_querylog status between requests. */ ?>
+<input type="checkbox" id="s_querylog" name="showquerylog" form="layoutform">
 <?php
 	$filename = get_temp_dir() . "/adminer.version";
 	if (!$_COOKIE["adminer_version"] && function_exists('openssl_verify') && file_exists($filename) && filemtime($filename) + 86400 > time()) { // 86400 - 1 day in seconds
@@ -193,18 +217,11 @@ function page_footer($missing = "") {
 	echo script("setupSubmitHighlight(document);");
 ?>
 </div>
-<input type="checkbox" id="s_querylog" name="querylog">
-<style>
-#querylog {
-	display:none;
-	border-radius:4px;background-color:#ccc;padding:0.5em;position:fixed;bottom:1.5em;
-}
-#s_querylog:checked ~ #querylog { display:block; }
-#logsummary { background-color:#ccc;position:fixed;bottom:0;padding:0.5em; }
-#logtoggle, #loghide { padding:0 4px;border:1px solid #999; background-color:#fff;border-radius:3px;white-space:nowrap;cursor:pointer; }
-</style>
+<?php
+# schema has its own more detailed #querylog stuff, so skip it for that page type
+if (!isset($_GET["schema"])): ?>
 <div id="querylog">
-<label for="s_querylog" id="loghide">Hide</label>
+<label for="s_querylog" id="hidequeryloglabel">Hide</label>
 <pre><?php
 $timesql=0;
 foreach ($GLOBALS['querylog'] as $q) {
@@ -214,7 +231,8 @@ foreach ($GLOBALS['querylog'] as $q) {
 }
 ?></pre>
 </div>
-<div id="logsummary"><?php echo "\n".round($timesql, 6).' s spent on <label for="s_querylog" id="logtoggle" title="Click to expand. Only queries of page request, not any by XHR requests.">'.count($GLOBALS['querylog']).' SQL queries</label>';?>
+<?php endif; ?>
+<div id="querylogsummary"><?php echo "\n".round($timesql, 6).' s spent on <label for="s_querylog" id="showqueryloglabel" title="Click to expand. Only queries of page request, not any by XHR requests.">'.count($GLOBALS['querylog']).' SQL queries</label>';?>
 </div>
 </body>
 </html>
